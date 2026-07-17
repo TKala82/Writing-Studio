@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lede — Genre-native writing studio
 
-## Getting Started
+Lede turns drafts and source material into genre-native writing while locking
+facts, preserving voice, and exposing every edit for review. It can read pasted
+text, public web and YouTube links, PDFs, and images; suggest evidence-grounded
+angles; then route the chosen angle through the same tracked editorial pipeline.
+Writing formats include fellowship statements, CVs, cover letters, social
+posts and threads, forum essays, research statements, outreach email, and
+policy briefs. Lede can also derive a private rubric from two or three examples
+of a form you admire.
 
-First, run the development server:
+Before a live rewrite, a short interview asks only for missing information that
+would materially change the piece, surfaces blind spots, and offers divergent
+editorial directions. Drafts, source angles, voice traits, and explicit
+accept/reject decisions persist to the private workspace. The pipeline streams
+the first rewrite, re-judges up to two targeted revisions, and ends with a
+submission-readiness report.
+
+## Local setup
+
+1. Install dependencies and create the local Convex deployment:
+
+```bash
+npm install
+npx convex dev --once
+```
+
+2. Copy `.env.example` to `.env.local` and add Clerk's publishable and secret
+keys. In Clerk, create a Convex JWT template named `convex`.
+
+3. Set secrets on the Convex deployment, because the model pipeline runs inside
+Convex actions:
+
+```bash
+npx convex env set CLERK_JWT_ISSUER_DOMAIN "https://your-clerk-domain"
+npx convex env set GOOGLE_GENERATIVE_AI_API_KEY "..."
+npx convex env set ANTHROPIC_API_KEY "..."
+npx convex env set OPENAI_API_KEY "..."
+```
+
+Optional model overrides use `GOOGLE_ANALYSIS_MODEL`,
+`ANTHROPIC_REWRITE_MODEL`, and `OPENAI_CRITIQUE_MODEL` in the same Convex
+environment.
+
+4. Run Convex and Next.js in separate terminals:
+
+```bash
+npm run dev:convex
+```
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Without Clerk keys, the app
+enters setup mode and offers a local fellowship example so the tracked-changes
+and scorecard experience can still be reviewed.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Source uploads accept PDFs and images up to 15 MB. Pasted sources are limited to
+120,000 characters, and one composition can use up to eight ready sources.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+In the review workspace, highlight text and right-click for dictionary,
+thesaurus, multi-option rewording, or a curated South African commercial-law
+lens (POPIA, CPA, gift cards, loyalty, crypto, King governance, plus EU AI Act
+for EU-facing AI content). Legal results are informational spotting against
+typed regime summaries—not legal advice.
 
-## Learn More
+## Quality checks
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
