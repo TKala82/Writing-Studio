@@ -72,6 +72,7 @@ set_convex_env() {
     GOOGLE_ANALYSIS_MODEL
     ANTHROPIC_REWRITE_MODEL
     OPENAI_CRITIQUE_MODEL
+    PIPELINE_DEMO_MODE
   )
 
   require_vars "${required[@]}"
