@@ -66,12 +66,19 @@ export function RubricScorecard({
   changeLog,
   factInventory,
 }: RubricScorecardProps) {
-  const judgmentItems = critique.filter((item) => {
-    const criterion = rubric.criteria.find(
-      (candidate) => candidate.id === item.criterionId,
+  const judgmentItems = rubric.criteria
+    .filter((criterion) => criterion.kind === "judgment")
+    .map(
+      (criterion): CritiqueItem =>
+        critique.find((item) => item.criterionId === criterion.id) ?? {
+          criterionId: criterion.id,
+          label: criterion.label,
+          score: 1,
+          passed: false,
+          rationale: "The editorial review did not assess this criterion.",
+          suggestion: "Run the quality review again before submitting.",
+        },
     );
-    return criterion?.kind === "judgment";
-  });
   const passed =
     judgmentItems.filter((item) => item.passed).length +
     findings.filter((finding) => finding.passed).length;

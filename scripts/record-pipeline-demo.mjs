@@ -12,9 +12,9 @@ Last year I built a small evaluation harness for language-model outputs as an in
 The fellowship would give me the opportunity to learn from experienced researchers and improve my research skills. I am a fast learner and work well independently. In the future, I hope to conduct useful technical AI safety research and help reduce risks from advanced AI systems.`;
 
 const PREFLIGHT_ANSWERS = [
-  "I want to contribute to evaluations research that helps labs and auditors measure hidden model tendencies more reliably.",
-  "After the programme I want a concrete research direction and a short public write-up or experiment that others can reuse.",
   "My evaluation harness across 300 conflicting-instruction prompts is the strongest evidence I have so far.",
+  "The fellowship's small-group mentoring and repeated project feedback would help me sharpen one useful evaluation question and design a stronger test.",
+  "By the end, I want to publish a short report and a reusable test plan that other researchers can repeat or improve.",
 ];
 
 function requireEnv(name) {
@@ -163,6 +163,14 @@ async function waitForPipelineComplete(page) {
   if (/Editorial pass stopped|pipeline needs attention/i.test(body)) {
     throw new Error(`Pipeline failed:\n${body.slice(0, 1500)}`);
   }
+  const scoreMatch = body.match(/Rubric scorecard[\s\S]{0,120}?(\d+)%/i);
+  const score = scoreMatch ? Number(scoreMatch[1]) : Number.NaN;
+  if (!Number.isFinite(score) || score < 80) {
+    throw new Error(
+      `Completed pipeline score ${Number.isFinite(score) ? `${score}%` : "was not found"}; expected at least 80%.`,
+    );
+  }
+  return score;
 }
 
 async function main() {
@@ -285,8 +293,8 @@ async function main() {
       fullPage: true,
     });
 
-    await waitForPipelineComplete(page);
-    note("Pipeline complete");
+    const score = await waitForPipelineComplete(page);
+    note(`Pipeline complete with ${score}% rubric score`);
     await page.waitForTimeout(2500);
     await page.screenshot({
       path: join(ARTIFACTS, "screenshots", "05-pipeline-complete.png"),

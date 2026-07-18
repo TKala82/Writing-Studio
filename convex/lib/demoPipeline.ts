@@ -83,11 +83,15 @@ export function demoPreflight() {
   };
 }
 
-const DEMO_FINAL = `My interest in AI safety became concrete while building a small evaluation harness for language-model outputs. Across 300 prompts, I tested how models handled conflicting instructions. The project left me with a question I want to investigate more rigorously: how much can behavioural evidence tell us about tendencies that are not visible in a model's ordinary responses?
+const DEMO_FINAL = `Across 300 prompts, I watched a small test tool reveal a gap. A language model could seem to understand a task, then act in a very different way when two instructions clashed. I built the tool as an independent project to test which direction a model would follow. The results did not give me a neat answer. They gave me a better question: what can behaviour show us about model traits that normal use may hide?
 
-That question drew me toward evaluations and mechanistic interpretability during an introductory AI safety course. I do not yet know which direction offers my strongest contribution, but I have started narrowing the uncertainty through independent work rather than treating the fellowship as a substitute for it.
+Building the tool changed how I handle doubt. I had to turn a broad safety concern into cases I could test. I had to decide what counted as a real failure and look for patterns, not striking single outputs. When a result was unclear, I rewrote the prompt and checked whether the same behaviour appeared again. I learned that evaluation is not just a final score for a finished model. A good test helps define a risk so that people can study it.
 
-After the fellowship, I intend to [ADD: state the concrete research output or decision this programme would enable]. My goal is not simply to learn more about AI safety. It is to identify a tractable research direction and produce work that helps others assess advanced systems more reliably.`;
+An introductory AI safety course then gave me a wider map of the field. I was drawn to evaluations and mechanistic interpretability. They approach the same problem from different sides. Evaluations show what a system does under chosen conditions. Interpretability may help explain why it does it. I do not yet know where I can add the most value. I want to settle that question through real research, not wait for a syllabus to choose for me.
+
+The fellowship's small-group mentoring and repeated project feedback would help me take that next step. I want to work with an evaluations researcher to sharpen one useful question and design a stronger test. I also want to learn when behavioural evidence needs support from interpretability methods. I would bring a habit of testing ideas on my own, writing down failures, and changing course when the evidence demands it. I would also bring the view of someone who has tried to turn a broad concern into a repeatable test.
+
+By the end of the fellowship, I aim to produce a short public report and a reusable test plan for conflicting instructions. The report would state what the study can and cannot support. Other researchers could then repeat it or improve the design. In the longer term, I want to help labs and independent auditors assess advanced systems with more care. This fellowship is the right next step because it links a question I have already begun to test with the mentoring and hard feedback needed to make the work useful to others.`;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -181,9 +185,10 @@ export async function buildDemoPipelineResult(args: {
       location: "Paragraphs one and two",
     },
     {
-      summary: "Expose missing programme evidence",
-      reason: "A placeholder is safer than inventing fit.",
-      location: "Programme-fit paragraph",
+      summary: "Connect programme fit to a next step",
+      reason:
+        "The mentoring format now leads to a defined experiment and public output.",
+      location: "Final two paragraphs",
     },
   ];
 
@@ -260,24 +265,38 @@ export async function buildDemoPipelineResult(args: {
     {
       criterionId: "specificity",
       label: "Passes the Any Applicant test",
-      score: 3,
+      score: 4,
       passed: true,
       rationale:
-        "The evaluation project and 300-prompt scope make the central case distinctive.",
+        "The 300-prompt test, prompt revisions, and conflicting-instruction question make the case distinctive.",
+    },
+    {
+      criterionId: "evidence",
+      label: "Claims are backed by evidence",
+      score: 4,
+      passed: true,
+      rationale:
+        "Each claim about research ability is tied to a concrete choice made while building and revising the test.",
     },
     {
       criterionId: "programme-fit",
       label: "Programme fit is precise",
-      score: 2,
-      passed: false,
+      score: 3,
+      passed: true,
       rationale:
-        "The source does not provide a specific programme feature to connect to.",
-      suggestion:
-        "Replace the highlighted placeholder with one programme resource and why it matters.",
+        "Small-group mentoring and repeated project feedback are connected to a stronger experiment and reusable output.",
+    },
+    {
+      criterionId: "agency",
+      label: "Signals agency and autonomy",
+      score: 4,
+      passed: true,
+      rationale:
+        "The applicant independently built, revised, and interpreted a test before seeking the fellowship.",
     },
   ];
 
-  current = setStep("critique", "complete", "1 precise issue found");
+  current = setStep("critique", "complete", "Every rubric check passed");
   current = setStep("revise", "active");
   await args.onProgress({
     stage: "revising",
@@ -289,7 +308,7 @@ export async function buildDemoPipelineResult(args: {
   current = setStep(
     "revise",
     "complete",
-    "Stopped after 1 revision with 1 issue still visible",
+    "Passed after 1 targeted revision",
   );
   await args.onProgress({
     stage: "complete",

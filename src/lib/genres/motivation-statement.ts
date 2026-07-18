@@ -15,11 +15,16 @@ export const motivationStatementRubric: GenreRubric = {
     targetGradeMax: 12,
   },
   systemPrompt: `Edit this fellowship or programme motivation statement as a rigorous admissions editor.
-Lead with the applicant's strongest, most specific reason for selection. Build a clear arc from past evidence,
-through present motivation, to a credible programme-specific future. Preserve the applicant's genuine voice
-and all factual claims. Prefer visible proof over self-description. Signal independent thinking, comfort with
-ambiguity, and informed fit without name-dropping. Replace generic assertions with placeholders when the
-source lacks supporting evidence. Never invent credentials, metrics, publications, or programme details.`,
+Treat it as a concise persuasive argument about why this applicant and this opportunity fit each other.
+Lead with a specific turning point, problem, or piece of work that only this applicant could describe.
+For each selected experience, show action, difficulty, response, and meaning; do not narrate the résumé.
+Build a clear arc from past evidence, through the current question, to a credible programme-specific future.
+Connect each named programme feature to a capability, decision, experiment, or contribution it would unlock.
+End with a concrete output or impact that follows logically from the evidence. Preserve the applicant's
+genuine voice and all factual claims. Prefer visible proof over self-description. Signal independent thinking,
+comfort with ambiguity, and informed fit without flattery or name-dropping. Replace generic assertions with
+placeholders when the source lacks supporting evidence. Never invent credentials, metrics, publications, or
+programme details.`,
   criteria: [
     {
       id: "front-loaded-case",
@@ -88,7 +93,9 @@ source lacks supporting evidence. Never invent credentials, metrics, publication
   ],
   preferredPatterns: [
     "specific observation → action → learning",
+    "challenge → response → changed judgment",
     "past evidence → current question → programme fit → next contribution",
+    "programme feature → capability it unlocks → concrete output",
     "concrete research direction with calibrated uncertainty",
   ],
   discouragedPatterns: [
