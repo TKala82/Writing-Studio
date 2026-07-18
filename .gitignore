@@ -44,3 +44,8 @@ next-env.d.ts
 # Private, out-of-band evaluation material
 /scenarios-vault/
 **/behavior_scenarios*.md
+
+# Launch audit / Playwright artifacts
+/artifacts/
+/playwright-report/
+/test-results/

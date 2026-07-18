@@ -71,7 +71,13 @@ typed regime summaries—not legal advice.
 npm run lint
 npm run typecheck
 npm run build
+npm test
+npx playwright test
 ```
+
+First-pass launch audit results and the fix sequence live in
+[docs/LAUNCH_AUDIT_REPORT.md](docs/LAUNCH_AUDIT_REPORT.md) and
+[docs/LAUNCH_READINESS_PLAN.md](docs/LAUNCH_READINESS_PLAN.md).
 
 ## External prompt evaluation
 
