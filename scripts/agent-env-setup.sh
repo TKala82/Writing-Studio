@@ -90,9 +90,21 @@ set_convex_env() {
   done
 }
 
+bootstrap_convex() {
+  # First pass provisions the anonymous local deployment. Auth env may be
+  # missing yet, so allow that push to fail before secrets are written.
+  CONVEX_AGENT_MODE=anonymous npx convex dev --once || true
+  set_convex_env
+  CONVEX_AGENT_MODE=anonymous npx convex dev --once
+}
+
 case "${1:-}" in
   setup)
     setup_frontend_env
+    ;;
+  bootstrap)
+    setup_frontend_env
+    bootstrap_convex
     ;;
   start)
     wait_for_convex
@@ -100,7 +112,7 @@ case "${1:-}" in
     exec npm run dev
     ;;
   *)
-    echo "Usage: $0 setup|start" >&2
+    echo "Usage: $0 setup|bootstrap|start" >&2
     exit 2
     ;;
 esac

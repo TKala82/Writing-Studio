@@ -1,6 +1,6 @@
 {
   "name": "Writing Studio",
-  "install": "npm ci && bash scripts/agent-env-setup.sh setup && npx convex dev --once",
+  "install": "npm ci && bash scripts/agent-env-setup.sh bootstrap",
   "ports": [
     {
       "name": "Next.js",
@@ -10,12 +10,12 @@
   "terminals": [
     {
       "name": "Convex",
-      "command": "npx convex dev --tail-logs disable",
+      "command": "CONVEX_AGENT_MODE=anonymous npx convex dev --tail-logs disable",
       "description": "Starts an isolated local Convex backend and watches backend functions."
     },
     {
       "name": "Next.js",
-      "command": "bash scripts/agent-env-setup.sh start",
+      "command": "CONVEX_AGENT_MODE=anonymous bash scripts/agent-env-setup.sh start",
       "description": "Configures Convex runtime secrets after it is ready, then starts Next.js."
     }
   ]
