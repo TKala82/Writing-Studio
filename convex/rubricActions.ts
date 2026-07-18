@@ -2,6 +2,7 @@
 
 import { generateText, Output } from "ai";
 import { v } from "convex/values";
+import { randomUUID } from "node:crypto";
 
 import { internal } from "./_generated/api";
 import type { GenreId } from "../src/lib/genres";
@@ -43,11 +44,19 @@ export const deriveFromReferences = action({
     ) {
       throw new Error("Each reference must contain 100–20,000 characters");
     }
-    assertAnalysisKey();
-    const { output } = await generateText({
-      model: pipelineModels.analysis,
-      output: Output.object({ schema: customRubricSchema }),
-      prompt: `Derive a reusable professional-writing rubric from reference examples the writer admires.
+
+    const leaseToken = randomUUID();
+    try {
+      await ctx.runMutation(internal.aiUsage.reserve, {
+        tokenIdentifier: identity.tokenIdentifier,
+        operation: "derive-rubric",
+        token: leaseToken,
+      });
+      assertAnalysisKey();
+      const { output } = await generateText({
+        model: pipelineModels.analysis,
+        output: Output.object({ schema: customRubricSchema }),
+        prompt: `Derive a reusable professional-writing rubric from reference examples the writer admires.
 
 REQUESTED FORM NAME
 ${name}
@@ -69,20 +78,25 @@ ${reference}
 </reference-${index + 1}>`,
   )
   .join("\n\n")}`,
-    });
-    if (!output) throw new Error("The rubric model returned no result");
-    if (output.length.maxWords <= output.length.minWords) {
-      throw new Error("The derived word-count range was invalid");
+      });
+      if (!output) throw new Error("The rubric model returned no result");
+      if (output.length.maxWords <= output.length.minWords) {
+        throw new Error("The derived word-count range was invalid");
+      }
+      if (output.length.targetGradeMax < output.length.targetGradeMin) {
+        throw new Error("The derived readability-grade range was invalid");
+      }
+      const rubricId = await ctx.runMutation(internal.customRubrics.saveDerived, {
+        tokenIdentifier: identity.tokenIdentifier,
+        ...output,
+        name,
+        referenceCount: references.length,
+      });
+      return { rubricId, baseGenre: output.baseGenre };
+    } finally {
+      await ctx
+        .runMutation(internal.aiUsage.release, { token: leaseToken })
+        .catch(() => null);
     }
-    if (output.length.targetGradeMax < output.length.targetGradeMin) {
-      throw new Error("The derived readability-grade range was invalid");
-    }
-    const rubricId = await ctx.runMutation(internal.customRubrics.saveDerived, {
-      tokenIdentifier: identity.tokenIdentifier,
-      ...output,
-      name,
-      referenceCount: references.length,
-    });
-    return { rubricId, baseGenre: output.baseGenre };
   },
 });

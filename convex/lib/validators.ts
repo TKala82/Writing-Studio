@@ -36,6 +36,9 @@ export const aiOperationValidator = v.union(
   v.literal("source-ingest"),
   v.literal("source-suggest"),
   v.literal("source-compose"),
+  v.literal("legal-lens"),
+  v.literal("derive-rubric"),
+  v.literal("voice-sample"),
 );
 
 export const shipProgressValidator = v.object({

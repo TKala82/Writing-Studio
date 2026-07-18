@@ -2,9 +2,45 @@ import type { GenreId } from "../../src/lib/genres";
 import { runDeterministicChecks } from "../../src/lib/analysis/checks";
 import { getGenreRubric } from "../../src/lib/genres";
 
-export function isDemoPipelineEnabled(): boolean {
-  const value = process.env.PIPELINE_DEMO_MODE?.trim().toLowerCase();
-  return value === "1" || value === "true" || value === "yes";
+function isTruthyFlag(value: string | undefined): boolean {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+type EnvLike = Record<string, string | undefined>;
+
+/**
+ * Production deployments must never serve fixture editorial content.
+ * Local / anonymous Convex may, but only with ALLOW_PIPELINE_DEMO_MODE=1.
+ */
+export function isProductionLikeDeployment(
+  env: EnvLike = process.env,
+): boolean {
+  if (isTruthyFlag(env.LEDE_FORCE_PRODUCTION_GUARDS)) return true;
+  const deployment = env.CONVEX_DEPLOYMENT?.trim() ?? "";
+  if (deployment.startsWith("prod:")) return true;
+  if (env.VERCEL_ENV === "production") return true;
+  return false;
+}
+
+export function assertDemoModeAllowed(env: EnvLike = process.env): void {
+  if (!isTruthyFlag(env.PIPELINE_DEMO_MODE)) return;
+  if (isProductionLikeDeployment(env)) {
+    throw new Error(
+      "PIPELINE_DEMO_MODE cannot be enabled in production. Unset it (or set 0) and redeploy.",
+    );
+  }
+  if (!isTruthyFlag(env.ALLOW_PIPELINE_DEMO_MODE)) {
+    throw new Error(
+      "PIPELINE_DEMO_MODE requires ALLOW_PIPELINE_DEMO_MODE=1 outside production.",
+    );
+  }
+}
+
+export function isDemoPipelineEnabled(env: EnvLike = process.env): boolean {
+  if (!isTruthyFlag(env.PIPELINE_DEMO_MODE)) return false;
+  assertDemoModeAllowed(env);
+  return true;
 }
 
 export function demoPreflight() {

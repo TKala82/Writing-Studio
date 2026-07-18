@@ -14,7 +14,10 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
-    "test:audit": "node scripts/launch-audit.mjs"
+    "test:audit": "node scripts/launch-audit.mjs",
+    "assert:demo-off": "node scripts/assert-demo-mode-off.mjs",
+    "audit:static": "node scripts/static-launch-audit.mjs",
+    "test:launch-gates": "npm run assert:demo-off && npm run audit:static && npm test"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.15",

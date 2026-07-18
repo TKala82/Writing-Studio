@@ -2,8 +2,10 @@
 
 import { generateText, Output } from "ai";
 import { v } from "convex/values";
+import { randomUUID } from "node:crypto";
 
 import { compactLegalRegimesForPrompt, legalRegimeIds } from "../src/lib/legal";
+import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
 import { legalLensSchema } from "./lib/pipelineSchemas";
 import { assertAnalysisKey, pipelineModels } from "./lib/models";
@@ -77,17 +79,29 @@ export const legalLens = action({
       throw new Error("Surrounding text is limited to 40,000 characters");
     }
 
-    assertAnalysisKey();
-    const { output } = await generateText({
-      model: pipelineModels.analysis,
-      output: Output.object({ schema: legalLensSchema }),
-      prompt: buildLegalLensPrompt({
-        selection,
-        surroundingText: args.surroundingText,
-        regimesJson: compactLegalRegimesForPrompt(),
-      }),
-    });
-    if (!output) throw new Error("The legal lens returned no result");
-    return output;
+    const leaseToken = randomUUID();
+    try {
+      await ctx.runMutation(internal.aiUsage.reserve, {
+        tokenIdentifier: identity.tokenIdentifier,
+        operation: "legal-lens",
+        token: leaseToken,
+      });
+      assertAnalysisKey();
+      const { output } = await generateText({
+        model: pipelineModels.analysis,
+        output: Output.object({ schema: legalLensSchema }),
+        prompt: buildLegalLensPrompt({
+          selection,
+          surroundingText: args.surroundingText,
+          regimesJson: compactLegalRegimesForPrompt(),
+        }),
+      });
+      if (!output) throw new Error("The legal lens returned no result");
+      return output;
+    } finally {
+      await ctx
+        .runMutation(internal.aiUsage.release, { token: leaseToken })
+        .catch(() => null);
+    }
   },
 });

@@ -7,6 +7,12 @@ const CONVEX_DIR = join(ROOT, "convex");
 const OUT_DIR = join(ROOT, "artifacts/launch-audit");
 mkdirSync(OUT_DIR, { recursive: true });
 
+const REQUIRED_RATE_LIMITED_ACTIONS = [
+  { file: "convex/selectionActions.ts", name: "legalLens" },
+  { file: "convex/rubricActions.ts", name: "deriveFromReferences" },
+  { file: "convex/voiceActions.ts", name: "addSample" },
+];
+
 function walk(dir) {
   const entries = readdirSync(dir, { withFileTypes: true });
   const files = [];
@@ -14,7 +20,9 @@ function walk(dir) {
     if (entry.name.startsWith("_") || entry.name === "node_modules") continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) files.push(...walk(full));
-    else if (entry.name.endsWith(".ts") || entry.name.endsWith(".js")) files.push(full);
+    else if (entry.name.endsWith(".ts") || entry.name.endsWith(".js")) {
+      files.push(full);
+    }
   }
   return files;
 }
@@ -31,7 +39,7 @@ for (const file of walk(CONVEX_DIR)) {
   while ((match = exportPattern.exec(source)) !== null) {
     const [, name, kind] = match;
     const start = match.index;
-    const chunk = source.slice(start, start + 2500);
+    const chunk = source.slice(start, start + 3500);
     const isInternal = kind.startsWith("internal");
     const hasArgs = /args\s*:/.test(chunk);
     const hasReturns = /returns\s*:/.test(chunk);
@@ -40,8 +48,9 @@ for (const file of walk(CONVEX_DIR)) {
       /getUserIdentity\s*\(/.test(chunk) ||
       /tokenIdentifier/.test(chunk);
     const hasRateLimit = /aiUsage\.reserve/.test(chunk);
+    const relative = file.replace(`${ROOT}\\`, "").replace(`${ROOT}/`, "");
     const item = {
-      file: file.replace(ROOT + "/", ""),
+      file: relative.replaceAll("\\", "/"),
       name,
       kind,
       hasArgs,
@@ -76,21 +85,39 @@ for (const file of walk(CONVEX_DIR)) {
   }
 }
 
-// Rate-limit gap probe for known AI actions
-const aiActionFiles = inventory.filter(
-  (item) => item.kind === "action" && !item.isInternal,
-);
-for (const item of aiActionFiles) {
+for (const required of REQUIRED_RATE_LIMITED_ACTIONS) {
+  const item = inventory.find(
+    (entry) => entry.file === required.file && entry.name === required.name,
+  );
+  if (!item) {
+    findings.push({
+      severity: "high",
+      id: "missing-ai-action",
+      message: `${required.file}:${required.name} was expected but not found`,
+    });
+    continue;
+  }
   if (!item.hasRateLimit) {
     findings.push({
       severity: "medium",
       id: "ai-action-without-rate-limit",
-      message: `${item.file}:${item.name} is a public AI action without aiUsage.reserve in the inspected chunk`,
+      message: `${item.file}:${item.name} is a public AI action without aiUsage.reserve`,
     });
   }
 }
 
-// Demo mode / secret hygiene probes
+const demoSource = readFileSync(
+  join(ROOT, "convex/lib/demoPipeline.ts"),
+  "utf8",
+);
+if (!demoSource.includes("assertDemoModeAllowed")) {
+  findings.push({
+    severity: "high",
+    id: "missing-demo-mode-guard",
+    message: "convex/lib/demoPipeline.ts lacks assertDemoModeAllowed",
+  });
+}
+
 const envExample = readFileSync(join(ROOT, ".env.example"), "utf8");
 if (!envExample.includes("PIPELINE_DEMO_MODE")) {
   findings.push({
@@ -99,54 +126,55 @@ if (!envExample.includes("PIPELINE_DEMO_MODE")) {
     message: ".env.example does not document PIPELINE_DEMO_MODE",
   });
 }
-if (!envExample.includes("CURSOR_API_KEY")) {
+if (!envExample.includes("ALLOW_PIPELINE_DEMO_MODE")) {
   findings.push({
-    severity: "low",
-    id: "cursor-key-undocumented",
-    message: ".env.example does not document CURSOR_API_KEY for external judge tooling",
+    severity: "medium",
+    id: "demo-allow-undocumented",
+    message: ".env.example does not document ALLOW_PIPELINE_DEMO_MODE",
   });
 }
 
 const packageJson = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
-if (!packageJson.scripts?.test) {
+if (!packageJson.scripts?.["assert:demo-off"]) {
   findings.push({
-    severity: "high",
-    id: "no-test-script",
-    message: "package.json has no npm test script",
+    severity: "medium",
+    id: "missing-demo-off-script",
+    message: "package.json lacks assert:demo-off deploy gate",
   });
 }
 
 const report = {
   generatedAt: new Date().toISOString(),
   inventoryCount: inventory.length,
-  publicFunctions: inventory.filter((item) => !item.isInternal).length,
   findings,
-  inventory,
+  rateLimitedRequired: REQUIRED_RATE_LIMITED_ACTIONS.map((item) => {
+    const match = inventory.find(
+      (entry) => entry.file === item.file && entry.name === item.name,
+    );
+    return {
+      ...item,
+      hasRateLimit: Boolean(match?.hasRateLimit),
+    };
+  }),
 };
 
-writeFileSync(join(OUT_DIR, "static-audit.json"), JSON.stringify(report, null, 2));
 writeFileSync(
-  join(OUT_DIR, "static-audit.md"),
-  [
-    "# Static launch audit",
-    "",
-    `Generated: ${report.generatedAt}`,
-    "",
-    `- Convex functions inventoried: ${report.inventoryCount}`,
-    `- Public functions: ${report.publicFunctions}`,
-    `- Findings: ${findings.length}`,
-    "",
-    "## Findings",
-    "",
-    ...(findings.length
-      ? findings.map((finding) => `- **${finding.severity}** \`${finding.id}\`: ${finding.message}`)
-      : ["- None"]),
-    "",
-  ].join("\n"),
+  join(OUT_DIR, "static-audit.json"),
+  `${JSON.stringify(report, null, 2)}\n`,
 );
 
-console.log(`Static audit wrote ${findings.length} findings to artifacts/launch-audit/`);
-for (const finding of findings) {
-  console.log(`[${finding.severity}] ${finding.id}: ${finding.message}`);
+const blocking = findings.filter((finding) =>
+  ["critical", "high", "medium"].includes(finding.severity),
+);
+
+if (blocking.length > 0) {
+  console.error("Static launch audit found issues:");
+  for (const finding of blocking) {
+    console.error(`- [${finding.severity}] ${finding.message}`);
+  }
+  process.exit(1);
 }
-process.exit(findings.some((finding) => finding.severity === "critical") ? 1 : 0);
+
+console.log(
+  `Static launch audit passed (${inventory.length} Convex exports scanned).`,
+);

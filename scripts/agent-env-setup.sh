@@ -73,6 +73,7 @@ set_convex_env() {
     ANTHROPIC_REWRITE_MODEL
     OPENAI_CRITIQUE_MODEL
     PIPELINE_DEMO_MODE
+    ALLOW_PIPELINE_DEMO_MODE
   )
 
   require_vars "${required[@]}"
@@ -83,6 +84,11 @@ set_convex_env() {
 
   npx convex env set CLERK_FRONTEND_API_URL \
     "${CLERK_FRONTEND_API_URL:-${CLERK_JWT_ISSUER_DOMAIN}}" >/dev/null
+
+  # Demo fixtures require an explicit allow flag and must never land on prod.
+  if [[ -n "${PIPELINE_DEMO_MODE:-}" && -z "${ALLOW_PIPELINE_DEMO_MODE:-}" ]]; then
+    ALLOW_PIPELINE_DEMO_MODE=1
+  fi
 
   for name in "${optional[@]}"; do
     if [[ -n "${!name:-}" ]]; then

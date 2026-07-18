@@ -13,6 +13,13 @@
 # testing
 /coverage
 
+# holdout evaluation (backup only; canonical scenarios live outside this workspace)
+/scenarios-vault/
+**/behavior_scenarios*.md
+
+# local audit artifacts
+/artifacts/
+
 # next.js
 /.next/
 /out/

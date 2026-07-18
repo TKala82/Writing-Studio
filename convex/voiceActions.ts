@@ -63,17 +63,30 @@ export const addSample = action({
       { tokenIdentifier: identity.tokenIdentifier },
     );
     if (!userId) throw new Error("User not found");
-    const current = await ctx.runQuery(internal.voiceProfiles.getForUser, {
-      userId,
-    });
-    const spec = await learnVoice(text, current?.spec);
-    await ctx.runMutation(internal.voiceProfiles.merge, {
-      userId,
-      spec,
-      sampleCountIncrement: 1,
-      baseVersion: current?.profileVersion ?? 0,
-    });
-    return null;
+
+    const leaseToken = randomUUID();
+    try {
+      await ctx.runMutation(internal.aiUsage.reserve, {
+        tokenIdentifier: identity.tokenIdentifier,
+        operation: "voice-sample",
+        token: leaseToken,
+      });
+      const current = await ctx.runQuery(internal.voiceProfiles.getForUser, {
+        userId,
+      });
+      const spec = await learnVoice(text, current?.spec);
+      await ctx.runMutation(internal.voiceProfiles.merge, {
+        userId,
+        spec,
+        sampleCountIncrement: 1,
+        baseVersion: current?.profileVersion ?? 0,
+      });
+      return null;
+    } finally {
+      await ctx
+        .runMutation(internal.aiUsage.release, { token: leaseToken })
+        .catch(() => null);
+    }
   },
 });
 
