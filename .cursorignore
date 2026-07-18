@@ -1,0 +1,3 @@
+# Keep hidden evaluation material out of Cursor repository context.
+scenarios-vault/
+**/behavior_scenarios*.md
