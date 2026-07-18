@@ -72,3 +72,13 @@ npm run lint
 npm run typecheck
 npm run build
 ```
+
+## External prompt evaluation
+
+The signed-in demo pipeline verifies product behavior; its score is not
+independent evidence that the production prompt is better. For blind A/B
+testing against the Oxford, Georgetown, MIT, Princeton, and Yale guidance
+synthesis, use the separately isolated Builder, generator, and judge workflow
+in [docs/EVAL_WORKFLOW.md](docs/EVAL_WORKFLOW.md). Freeze the run in advance
+with [docs/EVAL_BRIEF_TEMPLATE.md](docs/EVAL_BRIEF_TEMPLATE.md), and keep live
+benchmark scenarios outside this repository.
