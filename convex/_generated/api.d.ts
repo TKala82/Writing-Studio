@@ -17,6 +17,7 @@ import type * as editorialMemory from "../editorialMemory.js";
 import type * as ideation from "../ideation.js";
 import type * as ideationActions from "../ideationActions.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_demoPipeline from "../lib/demoPipeline.js";
 import type * as lib_models from "../lib/models.js";
 import type * as lib_pipelineSchemas from "../lib/pipelineSchemas.js";
 import type * as lib_prompts from "../lib/prompts.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   ideation: typeof ideation;
   ideationActions: typeof ideationActions;
   "lib/auth": typeof lib_auth;
+  "lib/demoPipeline": typeof lib_demoPipeline;
   "lib/models": typeof lib_models;
   "lib/pipelineSchemas": typeof lib_pipelineSchemas;
   "lib/prompts": typeof lib_prompts;

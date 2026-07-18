@@ -14,6 +14,11 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { action, type ActionCtx } from "./_generated/server";
 import {
+  buildDemoPipelineResult,
+  demoPreflight,
+  isDemoPipelineEnabled,
+} from "./lib/demoPipeline";
+import {
   assertAnalysisKey,
   assertModelKeys,
   assertRewriteKey,
@@ -269,40 +274,63 @@ export const preflight = action({
         operation: "preflight",
         token: leaseToken,
       });
-      assertAnalysisKey();
-      let rubric: GenreRubric = getGenreRubric(args.genre as GenreId);
-      if (args.customRubricId) {
-        const userId: Id<"users"> | null = await ctx.runQuery(
-          internal.users.getByToken,
-          { tokenIdentifier: identity.tokenIdentifier },
-        );
-        if (!userId) throw new Error("User not found");
-        const customRubric = await ctx.runQuery(
-          internal.customRubrics.getForRun,
-          {
-            rubricId: args.customRubricId,
-            userId,
-          },
-        );
-        if (!customRubric) throw new Error("Custom rubric not found");
-        rubric = {
-          id: customRubric.baseGenre,
-          name: customRubric.name,
-          shortName: customRubric.name,
-          description: customRubric.description,
-          icon: "file",
-          accent: customRubric.accent,
-          systemPrompt: customRubric.systemPrompt,
-          length: customRubric.length,
-          criteria: customRubric.criteria,
-          preferredPatterns: customRubric.preferredPatterns,
-          discouragedPatterns: customRubric.discouragedPatterns,
-        };
-      }
-      const { output } = await generateText({
-        model: pipelineModels.analysis,
-        output: Output.object({ schema: preflightSchema }),
-        prompt: `Act as a cognitive writing partner before editing this ${rubric.name}.
+      let output: {
+        questions: Array<{
+          id: string;
+          question: string;
+          whyItMatters: string;
+          answerHint: string;
+        }>;
+        blindSpots: Array<{
+          id: string;
+          label: string;
+          whyItMatters: string;
+          criterionId?: string;
+        }>;
+        variants: Array<{
+          id: string;
+          label: string;
+          approach: string;
+          openingDirection: string;
+        }>;
+      };
+      if (isDemoPipelineEnabled()) {
+        output = demoPreflight();
+      } else {
+        assertAnalysisKey();
+        let rubric: GenreRubric = getGenreRubric(args.genre as GenreId);
+        if (args.customRubricId) {
+          const userId: Id<"users"> | null = await ctx.runQuery(
+            internal.users.getByToken,
+            { tokenIdentifier: identity.tokenIdentifier },
+          );
+          if (!userId) throw new Error("User not found");
+          const customRubric = await ctx.runQuery(
+            internal.customRubrics.getForRun,
+            {
+              rubricId: args.customRubricId,
+              userId,
+            },
+          );
+          if (!customRubric) throw new Error("Custom rubric not found");
+          rubric = {
+            id: customRubric.baseGenre,
+            name: customRubric.name,
+            shortName: customRubric.name,
+            description: customRubric.description,
+            icon: "file",
+            accent: customRubric.accent,
+            systemPrompt: customRubric.systemPrompt,
+            length: customRubric.length,
+            criteria: customRubric.criteria,
+            preferredPatterns: customRubric.preferredPatterns,
+            discouragedPatterns: customRubric.discouragedPatterns,
+          };
+        }
+        const generated = await generateText({
+          model: pipelineModels.analysis,
+          output: Output.object({ schema: preflightSchema }),
+          prompt: `Act as a cognitive writing partner before editing this ${rubric.name}.
 
 PURPOSE
 ${args.customPurpose || rubric.description}
@@ -321,8 +349,12 @@ DRAFT
 <draft>
 ${draft}
 </draft>`,
-      });
-      if (!output) throw new Error("The preflight returned no result");
+        });
+        if (!generated.output) {
+          throw new Error("The preflight returned no result");
+        }
+        output = generated.output;
+      }
       const sessionId: Id<"preflightSessions"> = await ctx.runMutation(
         internal.preflight.saveSessionFromAction,
         {
@@ -430,6 +462,25 @@ export const run = action({
       }
 
       try {
+        if (isDemoPipelineEnabled()) {
+          await buildDemoPipelineResult({
+            draft: context.draft,
+            genre: context.genre,
+            onProgress: async ({ stage, steps: nextSteps, extras }) => {
+              steps = nextSteps;
+              await persistProgress({
+                runId: args.runId,
+                claimToken,
+                stage,
+                steps,
+                extras: extras as Parameters<typeof persistProgress>[0]["extras"],
+                runMutation: ctx.runMutation,
+              });
+            },
+          });
+          return null;
+        }
+
         assertModelKeys();
         const rubric: GenreRubric = context.customRubric
         ? {

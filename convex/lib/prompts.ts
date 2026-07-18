@@ -83,6 +83,10 @@ HARD CONSTRAINTS
 - When a necessary detail is absent, write [ADD: a brief description of what the author should supply].
 - Preserve meaning, perspective, calibrated uncertainty, and recognisable voice.
 - Meet the rubric's word range of ${rubric.length.minWords}–${rubric.length.maxWords} where the available source allows.
+- Build each body paragraph around one claim and its strongest evidence. Explain what the evidence changed, taught, or made possible.
+- Make programme fit causal: feature → capability or decision → concrete next contribution. Do not praise the programme in the abstract.
+- Prefer plain verbs, concrete nouns, and varied sentence lengths. Remove throat-clearing, repeated conclusions, résumé chronology, and claims that any applicant could make.
+- Before returning, silently audit every proficiency criterion. Revise until all criteria supported by the closed-world facts would score at least 3/4.
 - Return the complete rewritten document and an auditable change log.
 
 SOURCE DRAFT
