@@ -180,7 +180,7 @@ async function main() {
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const videoPath = join(STAGING, `pipeline-demo-${stamp}.mp4`);
-  const finalVideoPath = join(ARTIFACTS, `pipeline-demo-complete.mp4`);
+  const finalVideoPath = join(ARTIFACTS, `pipeline-demo-80plus.mp4`);
   const logPath = join(ARTIFACTS, `pipeline-demo-${stamp}.log`);
 
   const ticket = await createSignInTicket();
