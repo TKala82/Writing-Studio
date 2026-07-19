@@ -22,6 +22,7 @@ const DAILY_LIMITS = {
   "legal-lens": 60,
   "derive-rubric": 20,
   "voice-sample": 40,
+  "distill-playbook": 20,
 } as const;
 
 export const reserve = internalMutation({

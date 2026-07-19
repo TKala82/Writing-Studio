@@ -59,6 +59,17 @@ and scorecard experience can still be reviewed.
 Source uploads accept PDFs and images up to 15 MB. Pasted sources are limited to
 120,000 characters, and one composition can use up to eight ready sources.
 
+The Teach Lede playbook also accepts uploaded resources (PDF, DOCX, PPTX, XLSX,
+CSV, HTML, EPUB, Outlook .msg, plain text, and Markdown, up to 15 MB). Files are
+converted to Markdown locally with
+[Microsoft MarkItDown](https://github.com/microsoft/markitdown) — no tokens are
+spent on conversion — so the machine running `npm run dev` needs Python 3.10+
+with:
+
+```bash
+pip install "markitdown[all]"
+```
+
 In the review workspace, highlight text and right-click for dictionary,
 thesaurus, multi-option rewording, or a curated South African commercial-law
 lens (POPIA, CPA, gift cards, loyalty, crypto, King governance, plus EU AI Act

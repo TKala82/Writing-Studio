@@ -20,6 +20,11 @@ const ACTIONS = [
     name: "addSample",
     operation: "voice-sample",
   },
+  {
+    file: "convex/playbookActions.ts",
+    name: "distill",
+    operation: "distill-playbook",
+  },
 ] as const;
 
 describe("public AI action rate limits", () => {
@@ -38,5 +43,6 @@ describe("public AI action rate limits", () => {
     expect(source).toContain('"legal-lens": 60');
     expect(source).toContain('"derive-rubric": 20');
     expect(source).toContain('"voice-sample": 40');
+    expect(source).toContain('"distill-playbook": 20');
   });
 });

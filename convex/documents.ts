@@ -230,6 +230,143 @@ export const create = mutation({
   },
 });
 
+export const rename = mutation({
+  args: {
+    documentId: v.id("documents"),
+    title: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const document = await ctx.db.get("documents", args.documentId);
+    if (!document || document.userId !== user._id) {
+      throw new Error("Document not found or access denied");
+    }
+    const title = args.title.trim();
+    if (title.length < 1 || title.length > 120) {
+      throw new Error("Titles must contain 1–120 characters");
+    }
+    await ctx.db.patch("documents", document._id, {
+      title,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const getEditableText = query({
+  args: { documentId: v.id("documents") },
+  returns: v.union(
+    v.object({
+      draft: v.string(),
+      acceptedText: v.optional(v.string()),
+      genre: genreValidator,
+      customPurpose: v.optional(v.string()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const document = await ctx.db.get("documents", args.documentId);
+    if (!document) return null;
+    if (document.userId !== user._id) {
+      throw new Error("Unauthorized: this draft belongs to another user");
+    }
+    return {
+      draft: document.draft,
+      acceptedText: document.acceptedText,
+      genre: document.genre,
+      customPurpose: document.customPurpose,
+    };
+  },
+});
+
+export const remove = mutation({
+  args: { documentId: v.id("documents") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const document = await ctx.db.get("documents", args.documentId);
+    if (!document) return null;
+    if (document.userId !== user._id) {
+      throw new Error("Unauthorized: this draft belongs to another user");
+    }
+
+    const runs = await ctx.db
+      .query("runs")
+      .withIndex("by_document_and_created", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const run of runs) {
+      await ctx.db.delete("runs", run._id);
+    }
+
+    const libraryEntries = await ctx.db
+      .query("libraryEntries")
+      .withIndex("by_document", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const entry of libraryEntries) {
+      await ctx.db.delete("libraryEntries", entry._id);
+    }
+
+    const briefings = await ctx.db
+      .query("deliveryBriefings")
+      .withIndex("by_document_and_format", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const briefing of briefings) {
+      await ctx.db.delete("deliveryBriefings", briefing._id);
+    }
+
+    const briefingClaims = await ctx.db
+      .query("deliveryBriefingClaims")
+      .withIndex("by_document_and_format", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const claim of briefingClaims) {
+      await ctx.db.delete("deliveryBriefingClaims", claim._id);
+    }
+
+    const practiceSessions = await ctx.db
+      .query("practiceSessions")
+      .withIndex("by_document_and_updated", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const session of practiceSessions) {
+      await ctx.db.delete("practiceSessions", session._id);
+    }
+
+    const voiceClaims = await ctx.db
+      .query("voiceLearningClaims")
+      .withIndex("by_document_and_fingerprint", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const claim of voiceClaims) {
+      await ctx.db.delete("voiceLearningClaims", claim._id);
+    }
+
+    const editorialDecisions = await ctx.db
+      .query("editorialDecisions")
+      .withIndex("by_document", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const decision of editorialDecisions) {
+      await ctx.db.delete("editorialDecisions", decision._id);
+    }
+
+    await ctx.db.delete("documents", document._id);
+    return null;
+  },
+});
+
 export const getRun = query({
   args: { runId: v.id("runs") },
   returns: v.union(runViewValidator, v.null()),

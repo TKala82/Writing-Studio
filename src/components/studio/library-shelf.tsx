@@ -1,15 +1,18 @@
 "use client";
 
-import { useAction } from "convex/react";
+import { useAction, useConvex, useMutation } from "convex/react";
 import {
   BookOpenIcon,
   Clock3Icon,
   FileTextIcon,
   LibraryBigIcon,
+  PencilIcon,
+  RefreshCwIcon,
   SearchIcon,
   SparklesIcon,
+  Trash2Icon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { api } from "../../../convex/_generated/api";
@@ -45,6 +48,7 @@ interface ShelfDocument {
 interface LibraryShelfProps {
   documents: ShelfDocument[];
   onOpenRun: (runId: Id<"runs">) => void;
+  onEditDraft: (draftText: string, genre: GenreId) => void;
 }
 
 function relativeDate(timestamp: number): string {
@@ -59,10 +63,18 @@ function relativeDate(timestamp: number): string {
 export function LibraryShelf({
   documents,
   onOpenRun,
+  onEditDraft,
 }: LibraryShelfProps) {
   const [query, setQuery] = useState("");
   const [isOrganising, setIsOrganising] = useState(false);
+  const [renamingId, setRenamingId] = useState<Id<"documents"> | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [pendingId, setPendingId] = useState<Id<"documents"> | null>(null);
+  const renameCommitInFlight = useRef(false);
+  const convex = useConvex();
   const organiseShelf = useAction(api.libraryActions.organiseShelf);
+  const renameDocument = useMutation(api.documents.rename);
+  const removeDocument = useMutation(api.documents.remove);
   const unindexedCount = documents.filter((document) => !document.indexed).length;
   const grouped = useMemo(() => {
     const normalised = query.trim().toLowerCase();
@@ -104,6 +116,82 @@ export function LibraryShelf({
       );
     } finally {
       setIsOrganising(false);
+    }
+  }
+
+  function startRename(document: ShelfDocument) {
+    setRenamingId(document.documentId);
+    setRenameValue(document.title);
+  }
+
+  async function commitRename() {
+    if (!renamingId || renameCommitInFlight.current) return;
+    renameCommitInFlight.current = true;
+    const title = renameValue.trim();
+    const current = documents.find(
+      (document) => document.documentId === renamingId,
+    );
+    setRenamingId(null);
+    if (!current || !title || title === current.title) {
+      renameCommitInFlight.current = false;
+      return;
+    }
+    setPendingId(current.documentId);
+    try {
+      await renameDocument({ documentId: current.documentId, title });
+      toast.success("Draft renamed");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not rename this draft",
+      );
+    } finally {
+      setPendingId(null);
+      renameCommitInFlight.current = false;
+    }
+  }
+
+  async function handleEdit(document: ShelfDocument) {
+    setPendingId(document.documentId);
+    try {
+      const editable = await convex.query(api.documents.getEditableText, {
+        documentId: document.documentId,
+      });
+      if (!editable) {
+        toast.error("This draft is no longer available");
+        return;
+      }
+      onEditDraft(
+        editable.acceptedText ?? editable.draft,
+        editable.genre as GenreId,
+      );
+      toast.success("Draft loaded into the editor — adjust it and resubmit");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not load this draft",
+      );
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function handleDelete(document: ShelfDocument) {
+    if (
+      !window.confirm(
+        `Delete "${document.title}" and its editorial record permanently?`,
+      )
+    ) {
+      return;
+    }
+    setPendingId(document.documentId);
+    try {
+      await removeDocument({ documentId: document.documentId });
+      toast.success("Draft deleted");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not delete this draft",
+      );
+    } finally {
+      setPendingId(null);
     }
   }
 
@@ -205,9 +293,31 @@ export function LibraryShelf({
                             </Badge>
                           ) : null}
                         </div>
-                        <CardTitle className="line-clamp-1 text-xl">
-                          {document.title}
-                        </CardTitle>
+                        {renamingId === document.documentId ? (
+                          <Input
+                            autoFocus
+                            value={renameValue}
+                            maxLength={120}
+                            aria-label="Draft title"
+                            className="h-8 font-heading text-xl"
+                            onChange={(event) =>
+                              setRenameValue(event.target.value)
+                            }
+                            onBlur={() => void commitRename()}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                void commitRename();
+                              } else if (event.key === "Escape") {
+                                setRenamingId(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <CardTitle className="line-clamp-1 text-xl">
+                            {document.title}
+                          </CardTitle>
+                        )}
                         <CardDescription className="line-clamp-3 leading-5">
                           {document.summary ?? document.preview}
                         </CardDescription>
@@ -236,23 +346,62 @@ export function LibraryShelf({
                               {relativeDate(document.updatedAt)}
                             </span>
                           </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={!document.runId}
-                            title={
-                              document.runId
-                                ? "Open in the review room"
-                                : "No review run yet"
-                            }
-                            onClick={() => {
-                              if (document.runId) onOpenRun(document.runId);
-                            }}
-                          >
-                            <FileTextIcon data-icon="inline-start" />
-                            Open
-                          </Button>
+                          <span className="flex items-center gap-0.5">
+                            <Button
+                              type="button"
+                              size="icon-xs"
+                              variant="ghost"
+                              disabled={pendingId === document.documentId}
+                              title="Rename this draft"
+                              aria-label={`Rename ${document.title}`}
+                              onClick={() => startRename(document)}
+                            >
+                              <PencilIcon />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon-xs"
+                              variant="ghost"
+                              disabled={pendingId === document.documentId}
+                              title="Edit the text and run a fresh editorial pass"
+                              aria-label={`Edit and rework ${document.title}`}
+                              onClick={() => void handleEdit(document)}
+                            >
+                              {pendingId === document.documentId ? (
+                                <Spinner />
+                              ) : (
+                                <RefreshCwIcon />
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon-xs"
+                              variant="ghost"
+                              disabled={pendingId === document.documentId}
+                              title="Delete this draft permanently"
+                              aria-label={`Delete ${document.title}`}
+                              onClick={() => void handleDelete(document)}
+                            >
+                              <Trash2Icon />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={!document.runId}
+                              title={
+                                document.runId
+                                  ? "Open in the review room"
+                                  : "No review run yet"
+                              }
+                              onClick={() => {
+                                if (document.runId) onOpenRun(document.runId);
+                              }}
+                            >
+                              <FileTextIcon data-icon="inline-start" />
+                              Open
+                            </Button>
+                          </span>
                         </div>
                       </CardContent>
                     </Card>

@@ -359,3 +359,283 @@ export async function buildDemoPipelineResult(args: {
     },
   });
 }
+
+type DetectedGenre =
+  | "motivation-statement"
+  | "resume"
+  | "cover-letter"
+  | "social-post"
+  | "forum-essay"
+  | "research-statement"
+  | "outreach-email"
+  | "policy-brief"
+  | "social-thread";
+
+/** Heuristic classifier for local demo mode (no live model keys). */
+export function demoDetectGenre(draft: string): {
+  genre: DetectedGenre;
+  confidence: "high" | "medium" | "low";
+  reason: string;
+} {
+  const text = draft.toLowerCase();
+  const rules: Array<{
+    genre: DetectedGenre;
+    score: number;
+    reason: string;
+  }> = [
+    {
+      genre: "resume",
+      score:
+        Number(/\b(experience|education|skills|employment)\b/.test(text)) * 2 +
+        Number(/\b(bachelor|master|phd|linkedin)\b/.test(text)),
+      reason: "Looks like a résumé: credentials and experience sections.",
+    },
+    {
+      genre: "cover-letter",
+      score:
+        Number(/\b(dear hiring|i am writing to apply|vacancy|position)\b/.test(text)) *
+          3 +
+        Number(/\b(cover letter|application for)\b/.test(text)) * 2,
+      reason: "Reads as a cover letter addressed to a hiring decision.",
+    },
+    {
+      genre: "outreach-email",
+      score:
+        Number(/\b(hi |hello |dear )\b/.test(text)) +
+        Number(/\b(would you|could we|follow up|intro)\b/.test(text)) +
+        Number(/\bsubject:|best regards|kind regards\b/.test(text)),
+      reason: "Looks like outreach email: greeting and a concrete ask.",
+    },
+    {
+      genre: "social-thread",
+      score:
+        Number(/\b(1\/|2\/|thread|tweet)\b/.test(text)) * 3 +
+        Number((text.match(/\n\d+[\.\/]/g) ?? []).length),
+      reason: "Looks like a numbered social thread.",
+    },
+    {
+      genre: "social-post",
+      score:
+        Number(draft.trim().length < 900) +
+        Number(/\b(linkedin|post|hook|audience)\b/.test(text)),
+      reason: "Short, post-like draft suited to a social update.",
+    },
+    {
+      genre: "policy-brief",
+      score:
+        Number(/\b(policy|regulation|recommendation|stakeholders)\b/.test(text)) *
+          2 +
+        Number(/\b(brief|executive summary)\b/.test(text)),
+      reason: "Uses policy-brief framing and recommendations.",
+    },
+    {
+      genre: "research-statement",
+      score:
+        Number(/\b(research agenda|methodology|hypothesis|contribution)\b/.test(text)) *
+          2 +
+        Number(/\b(literature|findings|methods)\b/.test(text)),
+      reason: "Sounds like a research statement or statement of purpose.",
+    },
+    {
+      genre: "forum-essay",
+      score:
+        Number(/\b(i argue|in this essay|counterargument|however)\b/.test(text)) *
+          2 +
+        Number(draft.trim().length > 1200),
+      reason: "Longer argumentative prose suited to a forum essay.",
+    },
+    {
+      genre: "motivation-statement",
+      score:
+        Number(
+          /\b(fellowship|motivation|why i|programme|program|aspir)\b/.test(text),
+        ) * 2 +
+        Number(/\b(learn|contribute|opportunity)\b/.test(text)),
+      reason: "Motivation / fellowship language and personal trajectory.",
+    },
+  ];
+
+  const ranked = [...rules].sort((a, b) => b.score - a.score);
+  const best = ranked[0];
+  if (!best || best.score <= 0) {
+    return {
+      genre: "motivation-statement",
+      confidence: "low",
+      reason:
+        "Demo classifier: no strong format cues; defaulting to fellowship statement.",
+    };
+  }
+  return {
+    genre: best.genre,
+    confidence: best.score >= 3 ? "high" : best.score >= 2 ? "medium" : "low",
+    reason: `Demo classifier: ${best.reason}`,
+  };
+}
+
+/** Local / cloud-agent fixture when live model keys are unavailable. */
+export function demoIdeationInterview(genreName: string) {
+  return {
+    questions: [
+      {
+        id: "audience",
+        question: `Who will read this ${genreName}, and what decision should it help them make?`,
+        whyItMatters:
+          "Audience and decision shape tone, evidence, and what belongs in the opening.",
+        answerHint: "e.g. A fellowship selection committee deciding whom to shortlist",
+      },
+      {
+        id: "evidence",
+        question:
+          "What concrete experience, project, or evidence can you already put on the page?",
+        whyItMatters:
+          "A grounded first draft needs material you already have, not invented credentials.",
+        answerHint: "Name one project, result, or moment you can describe precisely",
+      },
+      {
+        id: "stakes",
+        question: "What changes for you if this piece succeeds—or fails?",
+        whyItMatters:
+          "Stakes keep the draft honest about urgency without forcing false certainty.",
+        answerHint: "Describe the next step this writing unlocks for you",
+      },
+      {
+        id: "uncertainty",
+        question:
+          "Where are you still unsure, and what would you rather leave open than invent?",
+        whyItMatters:
+          "Strong early drafts preserve uncertainty instead of papering over gaps.",
+        answerHint: "Name the gap you want the draft to mark as [ADD: …]",
+      },
+    ],
+    directions: [
+      {
+        id: "evidence-first",
+        label: "Lead with proof",
+        approach:
+          "Open on the strongest concrete experience, then turn it into the reader's decision.",
+        openingDirection:
+          "Start in the moment the evidence became hard to ignore.",
+      },
+      {
+        id: "decision-first",
+        label: "Lead with the reader's decision",
+        approach:
+          "State the decision the piece supports, then supply only the evidence that moves it.",
+        openingDirection:
+          "Give the reader the choice before the biography.",
+      },
+      {
+        id: "question-first",
+        label: "Lead with the open question",
+        approach:
+          "Begin from honest uncertainty, then show the work that makes the question worth asking.",
+        openingDirection:
+          "Name the unresolved question before claiming a settled path.",
+      },
+    ],
+  };
+}
+
+export function demoComposeFromInterview(args: {
+  genreName: string;
+  directionLabel: string;
+  answers: Array<{ questionId: string; question: string; answer: string }>;
+}): {
+  facts: Array<{ id: string; claim: string; sourceText: string }>;
+  title: string;
+  draft: string;
+  factIdsUsed: string[];
+} {
+  const facts = args.answers.slice(0, 6).map((item, index) => {
+    const sourceText = item.answer.trim().slice(0, 180);
+    return {
+      id: `demo-fact-${index + 1}`,
+      claim: `The writer stated: ${sourceText}`,
+      sourceText,
+    };
+  });
+  const body = args.answers
+    .map((item) => item.answer.trim())
+    .filter(Boolean)
+    .join("\n\n");
+  const draft = [
+    `This first ${args.genreName.toLowerCase()} draft follows the "${args.directionLabel}" direction.`,
+    "",
+    body ||
+      "[ADD: answer at least two interview questions so the draft can use your own material.]",
+    "",
+    "What remains open should stay marked rather than invented:",
+    "[ADD: any missing evidence, programme detail, or outcome you still need to decide.]",
+  ].join("\n");
+  return {
+    facts,
+    title: `Draft: ${args.directionLabel}`,
+    draft,
+    factIdsUsed: facts.map((fact) => fact.id),
+  };
+}
+
+const PLAYBOOK_GENRE_CUES: Array<{
+  genre: GenreId;
+  pattern: RegExp;
+}> = [
+  { genre: "motivation-statement", pattern: /\b(fellowship|motivation|application essay)\b/i },
+  { genre: "resume", pattern: /\b(r[eé]sum[eé]|cv|work experience)\b/i },
+  { genre: "cover-letter", pattern: /\b(cover letter|job application|hiring manager)\b/i },
+  { genre: "social-post", pattern: /\b(social post|linkedin post|short-form post)\b/i },
+  { genre: "forum-essay", pattern: /\b(forum essay|long-form essay|argumentative essay)\b/i },
+  { genre: "research-statement", pattern: /\b(research statement|research agenda|methodology)\b/i },
+  { genre: "outreach-email", pattern: /\b(outreach email|cold email|follow-up email)\b/i },
+  { genre: "policy-brief", pattern: /\b(policy brief|policy memo|recommendation)\b/i },
+  { genre: "social-thread", pattern: /\b(social thread|twitter thread|x thread)\b/i },
+];
+
+/**
+ * Deterministic fallback for previewing the Teach Lede flow without a model key.
+ * It deliberately extracts only explicit advice; it does not invent a doctrine.
+ */
+export function demoDistillPlaybook(emailContent: string): {
+  title: string;
+  genres: GenreId[];
+  appliesToAll: boolean;
+  tips: Array<{ kind: "do" | "avoid"; text: string }>;
+} {
+  const content = emailContent.trim();
+  const subjectMatch = content.match(/^subject:\s*(.+)$/im);
+  const firstLine = content.split(/\r?\n/).find((line) => line.trim().length >= 3);
+  const titleSource = subjectMatch?.[1] ?? firstLine ?? "Email writing guidance";
+  const title = titleSource.replace(/^[-*#\s]+/, "").trim().slice(0, 120);
+
+  const genres = PLAYBOOK_GENRE_CUES.filter(({ pattern }) =>
+    pattern.test(content),
+  ).map(({ genre }) => genre);
+  const appliesToAll = genres.length === 0;
+
+  const candidateLines = content
+    .split(/\r?\n|(?<=[.!?])\s+/)
+    .map((line) => line.replace(/^[-*•\d.)\s]+/, "").trim())
+    .filter((line) => line.length >= 18 && line.length <= 500)
+    .filter((line) => !/^subject:/i.test(line));
+  const uniqueLines = [...new Set(candidateLines)];
+  const tips = uniqueLines.slice(0, 8).map((text) => ({
+    kind: /\b(avoid|don't|do not|never|instead of|stop)\b/i.test(text)
+      ? ("avoid" as const)
+      : ("do" as const),
+    text,
+  }));
+
+  return {
+    title: title.length >= 3 ? title : "Email writing guidance",
+    genres,
+    appliesToAll,
+    tips:
+      tips.length > 0
+        ? tips
+        : [
+            {
+              kind: "do",
+              text: "Review the pasted guidance and keep only advice stated explicitly in the source.",
+            },
+          ],
+  };
+}

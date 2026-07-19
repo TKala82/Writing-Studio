@@ -19,6 +19,8 @@ import {
   metricsValidator,
   pipelineStageValidator,
   pipelineStepValidator,
+  playbookStatusValidator,
+  playbookTipValidator,
   practiceFeedbackValidator,
   practiceMessageValidator,
   practiceScenarioValidator,
@@ -157,6 +159,14 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  writerProfiles: defineTable({
+    userId: v.id("users"),
+    aboutMe: v.optional(v.string()),
+    objectives: v.optional(v.string()),
+    audience: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   voiceLearningClaims: defineTable({
     userId: v.id("users"),
     documentId: v.id("documents"),
@@ -183,7 +193,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user_and_created", ["userId", "createdAt"])
-    .index("by_user_genre_created", ["userId", "genre", "createdAt"]),
+    .index("by_user_genre_created", ["userId", "genre", "createdAt"])
+    .index("by_document", ["documentId"]),
 
   customRubrics: defineTable({
     userId: v.id("users"),
@@ -200,6 +211,20 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user_and_updated", ["userId", "updatedAt"]),
+
+  playbookEntries: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    sourceExcerpt: v.string(),
+    genres: v.array(genreValidator),
+    appliesToAll: v.boolean(),
+    tips: v.array(playbookTipValidator),
+    status: playbookStatusValidator,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_and_updated", ["userId", "updatedAt"])
+    .index("by_user_status_updated", ["userId", "status", "updatedAt"]),
 
   deliveryBriefings: defineTable({
     userId: v.id("users"),

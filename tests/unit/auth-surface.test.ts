@@ -57,4 +57,24 @@ describe("public Convex auth surface", () => {
       5,
     );
   });
+
+  it("scopes every public playbook operation to the current user", () => {
+    const source = readFileSync(join(ROOT, "convex/playbook.ts"), "utf8");
+    for (const name of ["listMine", "save", "setStatus", "remove"]) {
+      expect(source).toContain(`export const ${name}`);
+    }
+    expect(source.match(/getCurrentUser\(/g)?.length ?? 0).toBeGreaterThanOrEqual(
+      4,
+    );
+  });
+
+  it("scopes writer grounding reads and writes to the current user", () => {
+    const source = readFileSync(join(ROOT, "convex/writerProfile.ts"), "utf8");
+    for (const name of ["getMine", "save"]) {
+      expect(source).toContain(`export const ${name}`);
+    }
+    expect(source.match(/getCurrentUser\(/g)?.length ?? 0).toBeGreaterThanOrEqual(
+      2,
+    );
+  });
 });

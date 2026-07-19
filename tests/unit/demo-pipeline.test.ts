@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   assertDemoModeAllowed,
+  demoDetectGenre,
+  demoDistillPlaybook,
+  demoIdeationInterview,
   isDemoPipelineEnabled,
   isProductionLikeDeployment,
 } from "../../convex/lib/demoPipeline";
@@ -65,5 +68,38 @@ describe("demo pipeline guards", () => {
         }),
       ).toBe(false);
     }
+  });
+
+  it("returns a usable blank-page interview fixture", () => {
+    const interview = demoIdeationInterview("Social media post");
+    expect(interview.questions.length).toBeGreaterThanOrEqual(4);
+    expect(interview.directions.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("suggests fellowship format from motivation cues", () => {
+    const result = demoDetectGenre(
+      "I am applying to this fellowship because I want to contribute to AI safety research and learn from mentors in the programme.",
+    );
+    expect(result.genre).toBe("motivation-statement");
+    expect(result.reason).toMatch(/Demo classifier/);
+  });
+
+  it("distills explicit email advice into a genre-aware preview", () => {
+    const result = demoDistillPlaybook(`Subject: Better outreach emails
+
+- Open a cold email with the reason the recipient is uniquely relevant.
+- Keep the request small enough to answer in one reply.
+- Avoid generic praise that could be sent to anyone.
+- Never bury the concrete ask in the final paragraph.`);
+
+    expect(result.title).toBe("Better outreach emails");
+    expect(result.genres).toContain("outreach-email");
+    expect(result.appliesToAll).toBe(false);
+    expect(result.tips).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "do" }),
+        expect.objectContaining({ kind: "avoid" }),
+      ]),
+    );
   });
 });

@@ -11,6 +11,7 @@ const REQUIRED_RATE_LIMITED_ACTIONS = [
   { file: "convex/selectionActions.ts", name: "legalLens" },
   { file: "convex/rubricActions.ts", name: "deriveFromReferences" },
   { file: "convex/voiceActions.ts", name: "addSample" },
+  { file: "convex/playbookActions.ts", name: "distill" },
 ];
 
 function walk(dir) {

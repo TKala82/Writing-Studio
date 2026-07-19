@@ -38,6 +38,7 @@ interface NewRewriteFormProps {
   canDetect?: boolean;
   disabledReason?: string;
   initialDraft?: string;
+  initialGenre?: GenreId;
   onOpenRun?: (runId: Id<"runs">) => void;
   onSubmit: (input: {
     draft: string;
@@ -52,10 +53,11 @@ export function NewRewriteForm({
   canDetect = false,
   disabledReason,
   initialDraft = "",
+  initialGenre = "motivation-statement",
   onOpenRun,
   onSubmit,
 }: NewRewriteFormProps) {
-  const [genre, setGenre] = useState<GenreId>("motivation-statement");
+  const [genre, setGenre] = useState<GenreId>(initialGenre);
   const [draft, setDraft] = useState(initialDraft);
   const [customPurpose, setCustomPurpose] = useState("");
   const [customRubricId, setCustomRubricId] =

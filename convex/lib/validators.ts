@@ -12,6 +12,16 @@ export const genreValidator = v.union(
   v.literal("social-thread"),
 );
 
+export const playbookTipValidator = v.object({
+  kind: v.union(v.literal("do"), v.literal("avoid")),
+  text: v.string(),
+});
+
+export const playbookStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("archived"),
+);
+
 export const deliveryFormatValidator = v.union(
   v.literal("video-call"),
   v.literal("presentation-panel"),
@@ -39,6 +49,7 @@ export const aiOperationValidator = v.union(
   v.literal("legal-lens"),
   v.literal("derive-rubric"),
   v.literal("voice-sample"),
+  v.literal("distill-playbook"),
 );
 
 export const shipProgressValidator = v.object({
