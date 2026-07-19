@@ -20,9 +20,11 @@ import {
   critiqueValidator,
   customCriterionValidator,
   deterministicFindingValidator,
+  executionModeValidator,
   factValidator,
   genreValidator,
   metricsValidator,
+  pipelineErrorCodeValidator,
   pipelineStageValidator,
   pipelineStepValidator,
   runStatusValidator,
@@ -69,6 +71,7 @@ const runViewValidator = v.object({
   sourceIds: v.optional(v.array(v.id("sources"))),
   draft: v.string(),
   status: runStatusValidator,
+  executionMode: v.optional(executionModeValidator),
   stage: pipelineStageValidator,
   steps: v.array(pipelineStepValidator),
   factInventory: v.optional(v.array(factValidator)),
@@ -83,6 +86,7 @@ const runViewValidator = v.object({
   deterministicFindings: v.optional(v.array(deterministicFindingValidator)),
   bannedPhrases: v.optional(v.array(v.string())),
   critique: v.optional(v.array(critiqueValidator)),
+  errorCode: v.optional(pipelineErrorCodeValidator),
   error: v.optional(v.string()),
   shipProgress: v.optional(shipProgressValidator),
   updatedAt: v.number(),
@@ -230,6 +234,143 @@ export const create = mutation({
   },
 });
 
+export const rename = mutation({
+  args: {
+    documentId: v.id("documents"),
+    title: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const document = await ctx.db.get("documents", args.documentId);
+    if (!document || document.userId !== user._id) {
+      throw new Error("Document not found or access denied");
+    }
+    const title = args.title.trim();
+    if (title.length < 1 || title.length > 120) {
+      throw new Error("Titles must contain 1–120 characters");
+    }
+    await ctx.db.patch("documents", document._id, {
+      title,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const getEditableText = query({
+  args: { documentId: v.id("documents") },
+  returns: v.union(
+    v.object({
+      draft: v.string(),
+      acceptedText: v.optional(v.string()),
+      genre: genreValidator,
+      customPurpose: v.optional(v.string()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const document = await ctx.db.get("documents", args.documentId);
+    if (!document) return null;
+    if (document.userId !== user._id) {
+      throw new Error("Unauthorized: this draft belongs to another user");
+    }
+    return {
+      draft: document.draft,
+      acceptedText: document.acceptedText,
+      genre: document.genre,
+      customPurpose: document.customPurpose,
+    };
+  },
+});
+
+export const remove = mutation({
+  args: { documentId: v.id("documents") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const document = await ctx.db.get("documents", args.documentId);
+    if (!document) return null;
+    if (document.userId !== user._id) {
+      throw new Error("Unauthorized: this draft belongs to another user");
+    }
+
+    const runs = await ctx.db
+      .query("runs")
+      .withIndex("by_document_and_created", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const run of runs) {
+      await ctx.db.delete("runs", run._id);
+    }
+
+    const libraryEntries = await ctx.db
+      .query("libraryEntries")
+      .withIndex("by_document", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const entry of libraryEntries) {
+      await ctx.db.delete("libraryEntries", entry._id);
+    }
+
+    const briefings = await ctx.db
+      .query("deliveryBriefings")
+      .withIndex("by_document_and_format", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const briefing of briefings) {
+      await ctx.db.delete("deliveryBriefings", briefing._id);
+    }
+
+    const briefingClaims = await ctx.db
+      .query("deliveryBriefingClaims")
+      .withIndex("by_document_and_format", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const claim of briefingClaims) {
+      await ctx.db.delete("deliveryBriefingClaims", claim._id);
+    }
+
+    const practiceSessions = await ctx.db
+      .query("practiceSessions")
+      .withIndex("by_document_and_updated", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const session of practiceSessions) {
+      await ctx.db.delete("practiceSessions", session._id);
+    }
+
+    const voiceClaims = await ctx.db
+      .query("voiceLearningClaims")
+      .withIndex("by_document_and_fingerprint", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const claim of voiceClaims) {
+      await ctx.db.delete("voiceLearningClaims", claim._id);
+    }
+
+    const editorialDecisions = await ctx.db
+      .query("editorialDecisions")
+      .withIndex("by_document", (queryBuilder) =>
+        queryBuilder.eq("documentId", document._id),
+      )
+      .collect();
+    for (const decision of editorialDecisions) {
+      await ctx.db.delete("editorialDecisions", decision._id);
+    }
+
+    await ctx.db.delete("documents", document._id);
+    return null;
+  },
+});
+
 export const getRun = query({
   args: { runId: v.id("runs") },
   returns: v.union(runViewValidator, v.null()),
@@ -271,6 +412,7 @@ export const getRun = query({
       sourceIds: document.sourceIds,
       draft: document.draft,
       status: run.status,
+      executionMode: run.executionMode,
       stage: run.stage,
       steps: run.steps,
       factInventory: run.factInventory,
@@ -285,6 +427,7 @@ export const getRun = query({
       deterministicFindings: run.deterministicFindings,
       bannedPhrases: run.bannedPhrases,
       critique: run.critique,
+      errorCode: run.errorCode,
       error: run.error,
       shipProgress: run.shipProgress,
       updatedAt: run.updatedAt,
@@ -656,6 +799,7 @@ export const claimRun = internalMutation({
   args: {
     runId: v.id("runs"),
     claimToken: v.string(),
+    executionMode: executionModeValidator,
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
@@ -668,6 +812,8 @@ export const claimRun = internalMutation({
     await ctx.db.patch("runs", run._id, {
       status: "processing",
       claimToken: args.claimToken,
+      executionMode: args.executionMode,
+      errorCode: undefined,
       error: undefined,
       updatedAt: now,
     });
@@ -764,6 +910,7 @@ export const failRun = internalMutation({
     runId: v.id("runs"),
     claimToken: v.string(),
     steps: v.array(pipelineStepValidator),
+    errorCode: pipelineErrorCodeValidator,
     error: v.string(),
   },
   returns: v.null(),
@@ -780,6 +927,7 @@ export const failRun = internalMutation({
       status: "error",
       stage: "error",
       steps,
+      errorCode: args.errorCode,
       error: args.error.slice(0, 1_000),
       updatedAt: Date.now(),
     });

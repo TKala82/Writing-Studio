@@ -18,6 +18,8 @@ import { toast } from "sonner";
 
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { GenerationStatusBanner } from "@/components/studio/generation-status-banner";
+import { GroundingCard } from "@/components/studio/grounding-card";
 import { LibraryShelf } from "@/components/studio/library-shelf";
 import {
   ModeSwitcher,
@@ -34,6 +36,7 @@ import {
 import { ReviewWorkspace } from "@/components/studio/review-workspace";
 import { ScratchStarter } from "@/components/studio/scratch-starter";
 import { SourceDock } from "@/components/studio/source-dock";
+import { TeachLedePanel } from "@/components/studio/teach-lede-panel";
 import { VoiceProfileCard } from "@/components/studio/voice-profile-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -347,6 +350,8 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
   const [demoRun, setDemoRun] = useState<ReviewRunData | null>(null);
   const [entryMode, setEntryMode] = useState<EntryMode>("blank");
   const [shelfSeed, setShelfSeed] = useState("");
+  const [shelfSeedGenre, setShelfSeedGenre] = useState<GenreId>();
+  const [shelfSeedRevision, setShelfSeedRevision] = useState(0);
   const [pendingPreflight, setPendingPreflight] =
     useState<PendingPreflight | null>(null);
   const [ignoredPreflightSessionId, setIgnoredPreflightSessionId] = useState<
@@ -383,6 +388,10 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
       : "skip",
   );
   const workspaceReady = backendReady && userReady;
+  const generationStatus = useQuery(
+    api.system.generationStatus,
+    workspaceReady ? {} : "skip",
+  );
   const resumedPreflight: PendingPreflight | null =
     openPreflight &&
     openPreflight._id !== ignoredPreflightSessionId &&
@@ -720,6 +729,10 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
             genre: run.genre,
             finalText: run.finalText,
           }}
+          demoMode={
+            run.executionMode === "demo" ||
+            (!run.executionMode && generationStatus?.mode === "demo")
+          }
           onStartOver={() => setRunId(null)}
         />
       );
@@ -737,24 +750,30 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
               </CardTitle>
               <CardDescription>{run.error}</CardDescription>
             </CardHeader>
-            <CardContent className="flex gap-2">
-              <Button
-                onClick={() => {
-                  runPipeline({ runId }).catch((error: unknown) =>
-                    toast.error(
-                      error instanceof Error
-                        ? error.message
-                        : "Retry did not complete",
-                    ),
-                  );
-                }}
-              >
-                <RefreshCwIcon data-icon="inline-start" />
-                Retry
-              </Button>
-              <Button variant="outline" onClick={() => setRunId(null)}>
-                Return to draft
-              </Button>
+            <CardContent className="space-y-4">
+              <GenerationStatusBanner
+                enabled={workspaceReady}
+                failureCode={run.errorCode}
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    runPipeline({ runId }).catch((error: unknown) =>
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : "Retry did not complete",
+                      ),
+                    );
+                  }}
+                >
+                  <RefreshCwIcon data-icon="inline-start" />
+                  Retry
+                </Button>
+                <Button variant="outline" onClick={() => setRunId(null)}>
+                  Return to draft
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -820,21 +839,19 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
             </p>
           </section>
 
-          <Separator />
-
-          {recentDocuments && recentDocuments.length > 0 ? (
-            <>
-              <LibraryShelf
-                documents={recentDocuments}
-                onOpenRun={setRunId}
-              />
-              <Separator />
-            </>
-          ) : null}
-
-          <VoiceProfileCard enabled={workspaceReady} />
+          <GenerationStatusBanner enabled={workspaceReady} />
 
           <Separator />
+
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-semibold tracking-[0.18em] text-copper uppercase">
+              Step 1 · Choose how you begin
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Every path ends in the same editorial pipeline: analysis, a
+              rubric-guided rewrite, and a visible quality review.
+            </p>
+          </div>
 
           <ModeSwitcher value={entryMode} onChange={changeEntryMode} />
 
@@ -851,6 +868,8 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
                 disabledReason={clerkEnabled ? disabledReason : undefined}
                 onUsePassage={(passage) => {
                   setShelfSeed(passage);
+                  setShelfSeedGenre(undefined);
+                  setShelfSeedRevision((revision) => revision + 1);
                   changeEntryMode("draft");
                 }}
                 onOpenRun={setRunId}
@@ -878,9 +897,11 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
                   </p>
                 </div>
                 <NewRewriteForm
+                  key={shelfSeedRevision}
                   disabled={clerkEnabled && !workspaceReady}
                   canDetect={workspaceReady}
                   initialDraft={shelfSeed}
+                  initialGenre={shelfSeedGenre}
                   onOpenRun={setRunId}
                   disabledReason={
                     clerkEnabled
@@ -892,9 +913,52 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
               </div>
             ) : null}
           </div>
+
+          {recentDocuments && recentDocuments.length > 0 ? (
+            <>
+              <Separator />
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                  <p className="text-[10px] font-semibold tracking-[0.18em] text-copper uppercase">
+                    Continue where you left off
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Reopen a recent piece to keep refining it in the same
+                    editorial record.
+                  </p>
+                </div>
+                <LibraryShelf
+                  documents={recentDocuments}
+                  onOpenRun={setRunId}
+                  onEditDraft={(draftText, genre) => {
+                    setShelfSeed(draftText);
+                    setShelfSeedGenre(genre);
+                    setShelfSeedRevision((revision) => revision + 1);
+                    changeEntryMode("draft");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                />
+              </div>
+            </>
+          ) : null}
         </div>
 
-        <aside className="lg:pt-28">
+        <aside className="flex flex-col gap-5 lg:pt-28">
+          {workspaceReady ? (
+            <div className="flex flex-col gap-1">
+              <p className="text-[10px] font-semibold tracking-[0.18em] text-copper uppercase">
+                Lede&apos;s memory of you
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Everything here quietly shapes every draft, interview, and
+                rewrite — set it once, refine it as you go.
+              </p>
+            </div>
+          ) : null}
+          <GroundingCard enabled={workspaceReady} />
+          <VoiceProfileCard enabled={workspaceReady} />
+          <TeachLedePanel enabled={workspaceReady} />
+          {workspaceReady ? null : (
           <Card className="sticky top-8 overflow-hidden [--card-spacing:--spacing(5)] paper-shadow">
             <CardHeader>
               <p className="text-[10px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
@@ -942,6 +1006,7 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
               ))}
             </CardContent>
           </Card>
+          )}
         </aside>
       </main>
     </div>

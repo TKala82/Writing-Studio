@@ -11,14 +11,18 @@ import {
   deliveryFormatValidator,
   deterministicFindingValidator,
   documentStatusValidator,
+  executionModeValidator,
   factValidator,
   genreValidator,
   ideationDirectionValidator,
   ideationQuestionValidator,
   libraryKeyPassageValidator,
   metricsValidator,
+  pipelineErrorCodeValidator,
   pipelineStageValidator,
   pipelineStepValidator,
+  playbookStatusValidator,
+  playbookTipValidator,
   practiceFeedbackValidator,
   practiceMessageValidator,
   practiceScenarioValidator,
@@ -98,6 +102,8 @@ export default defineSchema({
     bannedPhrases: v.optional(v.array(v.string())),
     critique: v.optional(v.array(critiqueValidator)),
     claimToken: v.optional(v.string()),
+    executionMode: v.optional(executionModeValidator),
+    errorCode: v.optional(pipelineErrorCodeValidator),
     error: v.optional(v.string()),
     shipProgress: v.optional(shipProgressValidator),
     createdAt: v.number(),
@@ -157,6 +163,14 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  writerProfiles: defineTable({
+    userId: v.id("users"),
+    aboutMe: v.optional(v.string()),
+    objectives: v.optional(v.string()),
+    audience: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   voiceLearningClaims: defineTable({
     userId: v.id("users"),
     documentId: v.id("documents"),
@@ -183,7 +197,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_user_and_created", ["userId", "createdAt"])
-    .index("by_user_genre_created", ["userId", "genre", "createdAt"]),
+    .index("by_user_genre_created", ["userId", "genre", "createdAt"])
+    .index("by_document", ["documentId"]),
 
   customRubrics: defineTable({
     userId: v.id("users"),
@@ -200,6 +215,20 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user_and_updated", ["userId", "updatedAt"]),
+
+  playbookEntries: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    sourceExcerpt: v.string(),
+    genres: v.array(genreValidator),
+    appliesToAll: v.boolean(),
+    tips: v.array(playbookTipValidator),
+    status: playbookStatusValidator,
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_and_updated", ["userId", "updatedAt"])
+    .index("by_user_status_updated", ["userId", "status", "updatedAt"]),
 
   deliveryBriefings: defineTable({
     userId: v.id("users"),

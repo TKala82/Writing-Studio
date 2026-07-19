@@ -59,6 +59,17 @@ and scorecard experience can still be reviewed.
 Source uploads accept PDFs and images up to 15 MB. Pasted sources are limited to
 120,000 characters, and one composition can use up to eight ready sources.
 
+The Teach Lede playbook also accepts uploaded resources (PDF, DOCX, PPTX, XLSX,
+CSV, HTML, EPUB, Outlook .msg, plain text, and Markdown, up to 15 MB). Files are
+converted to Markdown locally with
+[Microsoft MarkItDown](https://github.com/microsoft/markitdown) — no tokens are
+spent on conversion — so the machine running `npm run dev` needs Python 3.10+
+with:
+
+```bash
+pip install "markitdown[all]"
+```
+
 In the review workspace, highlight text and right-click for dictionary,
 thesaurus, multi-option rewording, or a curated South African commercial-law
 lens (POPIA, CPA, gift cards, loyalty, crypto, King governance, plus EU AI Act
@@ -71,4 +82,20 @@ typed regime summaries—not legal advice.
 npm run lint
 npm run typecheck
 npm run build
+npm test
+npx playwright test
 ```
+
+First-pass launch audit results and the fix sequence live in
+[docs/LAUNCH_AUDIT_REPORT.md](docs/LAUNCH_AUDIT_REPORT.md) and
+[docs/LAUNCH_READINESS_PLAN.md](docs/LAUNCH_READINESS_PLAN.md).
+
+## External prompt evaluation
+
+The signed-in demo pipeline verifies product behavior; its score is not
+independent evidence that the production prompt is better. For blind A/B
+testing against the Oxford, Georgetown, MIT, Princeton, and Yale guidance
+synthesis, use the separately isolated Builder, generator, and judge workflow
+in [docs/EVAL_WORKFLOW.md](docs/EVAL_WORKFLOW.md). Freeze the run in advance
+with [docs/EVAL_BRIEF_TEMPLATE.md](docs/EVAL_BRIEF_TEMPLATE.md), and keep live
+benchmark scenarios outside this repository.

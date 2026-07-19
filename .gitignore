@@ -13,6 +13,13 @@
 # testing
 /coverage
 
+# holdout evaluation (backup only; canonical scenarios live outside this workspace)
+/scenarios-vault/
+**/behavior_scenarios*.md
+
+# local audit artifacts
+/artifacts/
+
 # next.js
 /.next/
 /out/
@@ -40,3 +47,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Private, out-of-band evaluation material
+/scenarios-vault/
+**/behavior_scenarios*.md
+
+# Launch audit / Playwright artifacts
+/artifacts/
+/playwright-report/
+/test-results/

@@ -366,6 +366,21 @@ export const customRubricSchema = z.object({
   discouragedPatterns: z.array(z.string().max(1_000)).min(1).max(8),
 });
 
+export const playbookDistillationSchema = z.object({
+  title: z.string().min(3).max(120),
+  genres: z.array(genreIdSchema).max(9),
+  appliesToAll: z.boolean(),
+  tips: z
+    .array(
+      z.object({
+        kind: z.enum(["do", "avoid"]),
+        text: z.string().min(10).max(500),
+      }),
+    )
+    .min(1)
+    .max(12),
+});
+
 export const librarianIndexSchema = z.object({
   summary: z.string().min(1).max(600),
   topics: z.array(z.string().min(1).max(80)).min(1).max(8),
@@ -401,3 +416,6 @@ export type IdeationInterviewOutput = z.infer<typeof ideationInterviewSchema>;
 export type DeliveryBriefingOutput = z.infer<typeof deliveryBriefingSchema>;
 export type PracticeFeedbackOutput = z.infer<typeof practiceFeedbackSchema>;
 export type LibrarianIndexOutput = z.infer<typeof librarianIndexSchema>;
+export type PlaybookDistillationOutput = z.infer<
+  typeof playbookDistillationSchema
+>;

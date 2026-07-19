@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress, ProgressLabel } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { computeScorecardPercent } from "@/lib/analysis/scorecard";
 import type { GenreRubric } from "@/lib/genres";
 
 interface CritiqueItem {
@@ -66,17 +67,24 @@ export function RubricScorecard({
   changeLog,
   factInventory,
 }: RubricScorecardProps) {
-  const judgmentItems = critique.filter((item) => {
-    const criterion = rubric.criteria.find(
-      (candidate) => candidate.id === item.criterionId,
+  const judgmentItems = rubric.criteria
+    .filter((criterion) => criterion.kind === "judgment")
+    .map(
+      (criterion): CritiqueItem =>
+        critique.find((item) => item.criterionId === criterion.id) ?? {
+          criterionId: criterion.id,
+          label: criterion.label,
+          score: 1,
+          passed: false,
+          rationale: "The editorial review did not assess this criterion.",
+          suggestion: "Run the quality review again before submitting.",
+        },
     );
-    return criterion?.kind === "judgment";
+  const score = computeScorecardPercent({
+    criteria: rubric.criteria,
+    critique,
+    findings,
   });
-  const passed =
-    judgmentItems.filter((item) => item.passed).length +
-    findings.filter((finding) => finding.passed).length;
-  const total = judgmentItems.length + findings.length;
-  const score = total === 0 ? 0 : Math.round((passed / total) * 100);
 
   return (
     <aside className="flex h-full min-h-0 flex-col border-l bg-card/70">

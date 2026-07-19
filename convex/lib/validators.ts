@@ -12,6 +12,16 @@ export const genreValidator = v.union(
   v.literal("social-thread"),
 );
 
+export const playbookTipValidator = v.object({
+  kind: v.union(v.literal("do"), v.literal("avoid")),
+  text: v.string(),
+});
+
+export const playbookStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("archived"),
+);
+
 export const deliveryFormatValidator = v.union(
   v.literal("video-call"),
   v.literal("presentation-panel"),
@@ -36,6 +46,10 @@ export const aiOperationValidator = v.union(
   v.literal("source-ingest"),
   v.literal("source-suggest"),
   v.literal("source-compose"),
+  v.literal("legal-lens"),
+  v.literal("derive-rubric"),
+  v.literal("voice-sample"),
+  v.literal("distill-playbook"),
 );
 
 export const shipProgressValidator = v.object({
@@ -175,6 +189,18 @@ export const runStatusValidator = v.union(
   v.literal("processing"),
   v.literal("complete"),
   v.literal("error"),
+);
+
+export const pipelineErrorCodeValidator = v.union(
+  v.literal("provider-quota"),
+  v.literal("provider-auth"),
+  v.literal("provider-unavailable"),
+  v.literal("unknown"),
+);
+
+export const executionModeValidator = v.union(
+  v.literal("live"),
+  v.literal("demo"),
 );
 
 export const pipelineStageValidator = v.union(

@@ -10,7 +10,18 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "check": "npm run lint && npm run typecheck"
+    "check": "npm run lint && npm run typecheck",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:audit": "node scripts/launch-audit.mjs",
+    "eval": "tsx scripts/eval/index.ts",
+    "eval:provider-smoke": "tsx scripts/eval/provider-smoke.ts",
+    "research:guard": "tsx scripts/research/assert-allowed-diff.ts",
+    "research:experiment": "node scripts/research/run-experiment.mjs",
+    "assert:demo-off": "node scripts/assert-demo-mode-off.mjs",
+    "audit:static": "node scripts/static-launch-audit.mjs",
+    "test:launch-gates": "npm run assert:demo-off && npm run audit:static && npm test"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.15",
@@ -43,6 +54,8 @@
   },
   "devDependencies": {
     "@convex-dev/eslint-plugin": "^2.0.0",
+    "@edge-runtime/vm": "^5.0.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/diff-match-patch": "^1.0.36",
     "@types/html-to-text": "^9.0.4",
@@ -50,9 +63,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "convex-test": "^0.0.54",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "playwright": "^1.61.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.23.1",
+    "typescript": "^5",
+    "vitest": "^4.1.10",
+    "wait-on": "^9.0.10"
   }
 }
