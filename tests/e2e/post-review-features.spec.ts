@@ -152,4 +152,51 @@ test.describe("post-review feature probes", () => {
     const body = await page.locator("body").innerText();
     expect(body).toMatch(/idea|interview|start|blank|compose|purpose/i);
   });
+
+  test("accept-all and reject-all update tracked decisions", async ({ page }) => {
+    test.setTimeout(240_000);
+    await signIn(page, await createSignInTicket());
+    await completeDemoPipeline(page);
+
+    await page.getByRole("button", { name: "Accept all" }).click();
+    await expect(page.getByText(/[1-9]\d* accepted/).first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Reject all" }).click();
+    await expect(page.getByText(/[1-9]\d* rejected/).first()).toBeVisible();
+  });
+
+  test("source desk adds and removes pasted material", async ({ page }) => {
+    test.setTimeout(180_000);
+    await signIn(page, await createSignInTicket());
+    await page
+      .getByRole("tab", { name: /sources|From sources/i })
+      .first()
+      .click();
+
+    const removeButtons = page.getByRole("button", {
+      name: /Remove Pasted source/i,
+    });
+    const before = await removeButtons.count();
+    await page
+      .getByPlaceholder(/Paste source text/i)
+      .fill(
+        "This evidence pack records a reproducible evaluation across three hundred prompts, including the method, observed failures, and limitations.",
+      );
+    await page.getByRole("button", { name: /Add to source desk/i }).click();
+    await expect(removeButtons).toHaveCount(before + 1, { timeout: 120_000 });
+    await removeButtons.last().click();
+    await expect(removeButtons).toHaveCount(before, { timeout: 30_000 });
+  });
+
+  test("delivery room builds a demo briefing", async ({ page }) => {
+    test.setTimeout(240_000);
+    await signIn(page, await createSignInTicket());
+    await completeDemoPipeline(page);
+
+    await page.getByRole("button", { name: /Prepare to deliver/i }).click();
+    await expect(page.getByText("Delivery room")).toBeVisible();
+    await page.getByRole("button", { name: /Build my briefing/i }).click();
+    await expect(page.getByText("Spoken spine")).toBeVisible();
+    await expect(page.getByText("Questions to rehearse")).toBeVisible();
+  });
 });

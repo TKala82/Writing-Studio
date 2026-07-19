@@ -85,3 +85,33 @@ and the rubric requirements derived from it.
 - Deviations from this brief:
 - Human reviewer sign-off:
 - Artifact manifest and hashes:
+
+## Machine-frozen manifest
+
+Before a formal run, save `holdout.brief.json` in the external scenario vault.
+The harness refuses to reveal/generate against the holdout unless every value
+matches the clean checked-out commit and runtime configuration:
+
+```json
+{
+  "status": "frozen",
+  "evaluationId": "lede-holdout-YYYY-MM-DD",
+  "frozenCommitSha": "<git SHA>",
+  "seed": "<pre-registered seed>",
+  "scenarioSet": "holdout",
+  "scenarioSetHash": "<sha256>",
+  "promptHash": "<sha256>",
+  "rubricHash": "<sha256>",
+  "harnessHash": "<sha256>",
+  "configurationHash": "<sha256>",
+  "generatorModel": "anthropic:<exact model>",
+  "judgeModels": ["openai:<exact model>", "google:<exact model>"],
+  "maxOutputTokens": 2500,
+  "maxTotalTokens": 250000,
+  "maxUsd": 25
+}
+```
+
+The raw scenario, output, and judge-evidence record is written only under the
+external vault's `results/` directory. Repository-local `artifacts/eval/`
+contains a sanitized summary and hashes.

@@ -34,6 +34,7 @@ import {
   rewriteSchema,
   selectionRewriteSchema,
 } from "./lib/pipelineSchemas";
+import { classifyPipelineError } from "./lib/pipelineErrors";
 import {
   buildAnalysisPrompt,
   buildCritiquePrompt,
@@ -145,11 +146,6 @@ function updateStep(
   return steps.map((step) =>
     step.id === id ? { ...step, status, insight: insight ?? step.insight } : step,
   );
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return "The writing pipeline stopped unexpectedly";
 }
 
 function normalizeEvidenceText(value: string): string {
@@ -507,11 +503,13 @@ export const run = action({
       token: leaseToken,
     });
     const claimToken = randomUUID();
+    const executionMode = isDemoPipelineEnabled() ? "demo" : "live";
     let steps = STEP_BLUEPRINT.map((step) => ({ ...step }));
     try {
       const claimed = await ctx.runMutation(internal.documents.claimRun, {
         runId: args.runId,
         claimToken,
+        executionMode,
       });
       if (!claimed) {
         throw new Error(
@@ -520,7 +518,7 @@ export const run = action({
       }
 
       try {
-        if (isDemoPipelineEnabled()) {
+        if (executionMode === "demo") {
           await buildDemoPipelineResult({
             draft: context.draft,
             genre: context.genre,
@@ -841,18 +839,20 @@ export const run = action({
       });
       return null;
       } catch (error) {
-        const message = errorMessage(error).slice(0, 1_000);
+        console.error("Editorial pipeline failure", error);
+        const failure = classifyPipelineError(error);
         const activeStep = steps.find((step) => step.status === "active");
         if (activeStep) {
-          steps = updateStep(steps, activeStep.id, "error", message);
+          steps = updateStep(steps, activeStep.id, "error", failure.message);
         }
         await ctx.runMutation(internal.documents.failRun, {
           runId: args.runId,
           claimToken,
           steps,
-          error: message,
+          errorCode: failure.code,
+          error: failure.message,
         });
-        throw new Error(message);
+        throw new Error(failure.message);
       }
     } finally {
       await ctx

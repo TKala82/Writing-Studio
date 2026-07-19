@@ -1,12 +1,21 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { FlaskConicalIcon, KeyRoundIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  FlaskConicalIcon,
+  KeyRoundIcon,
+} from "lucide-react";
 
 import { api } from "../../../convex/_generated/api";
 
 interface GenerationStatusBannerProps {
   enabled: boolean;
+  failureCode?:
+    | "provider-quota"
+    | "provider-auth"
+    | "provider-unavailable"
+    | "unknown";
 }
 
 /**
@@ -16,13 +25,36 @@ interface GenerationStatusBannerProps {
  */
 export function GenerationStatusBanner({
   enabled,
+  failureCode,
 }: GenerationStatusBannerProps) {
   const status = useQuery(
     api.system.generationStatus,
     enabled ? {} : "skip",
   );
 
-  if (!enabled || !status || status.mode === "live") return null;
+  if (!enabled) return null;
+
+  if (failureCode === "provider-quota") {
+    return (
+      <div
+        role="alert"
+        className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/8 px-4 py-3 text-sm"
+      >
+        <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-amber-600" />
+        <div>
+          <p className="font-semibold text-amber-700 dark:text-amber-400">
+            Generation is paused because an AI provider reached its quota.
+          </p>
+          <p className="mt-1 leading-relaxed text-muted-foreground">
+            Your draft is safe. An operator needs to restore the provider budget
+            or quota before a retry can complete.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!status || status.mode === "live") return null;
 
   if (status.mode === "demo") {
     return (

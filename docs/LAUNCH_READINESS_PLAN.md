@@ -53,16 +53,21 @@ quota errors. Demo-mode e2e success does **not** satisfy this phase.
 | --- | --- | --- |
 | L2.1 | Unit tests for demo guard + rate-limit wiring | Done |
 | L2.2 | Static auth-surface scan for public Convex exports | Done (static) |
-| L2.3 | Runtime User A / User B isolation tests | Open |
-| L2.4 | Expand Playwright beyond happy path (accept/reject, delivery, practice, sources, uploads) | Open |
-| L2.5 | Provider 429 / quota error UX | Open |
-| L2.6 | CI job: `check` + `test:launch-gates` (+ Playwright when secrets present) | Open |
+| L2.3 | Runtime User A / User B isolation tests | Done — `convex-test` coverage for documents, sources, writer/voice profiles, and custom rubrics |
+| L2.4 | Expand Playwright beyond happy path (accept/reject, delivery, practice, sources, uploads) | Partially done — accept/reject, source add/remove, and delivery briefing covered; upload remains open |
+| L2.5 | Provider 429 / quota error UX | Done — typed provider failure codes and quota guidance |
+| L2.6 | CI job: `check` + `test:launch-gates` (+ Playwright when secrets present) | Done — `.github/workflows/ci.yml` |
 
 ## Phase 3 — Independent writing-quality proof (P1)
 
 Follow `docs/EVAL_WORKFLOW.md`. Store live scenarios only in the external vault
 at `C:\Users\shabs\OneDrive\Documents\scenarios-vault`. In-app demo scores do
 not count.
+
+The executable harness is available through `npm run eval`. Use
+`npm run eval -- --set dev --mock` only to rehearse orchestration; it cannot
+produce writing-quality evidence. Live runs require restored provider credits
+and a JSON scenario set in the external vault.
 
 Exit criteria: signed evaluation brief with pass/fail decision, or an explicit
 written risk waiver.
@@ -88,7 +93,11 @@ written risk waiver.
 ```bash
 npm run check
 npm run test:launch-gates
+# Offline orchestration rehearsal:
+npm run eval -- --set dev --mock
 # After credits restored and demo mode off:
+# npm run eval:provider-smoke
+# npm run eval -- --set holdout
 # npx playwright test
 # node scripts/record-pipeline-demo.mjs   # only as UI smoke, never as quality proof
 ```

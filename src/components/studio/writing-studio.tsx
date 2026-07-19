@@ -388,6 +388,10 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
       : "skip",
   );
   const workspaceReady = backendReady && userReady;
+  const generationStatus = useQuery(
+    api.system.generationStatus,
+    workspaceReady ? {} : "skip",
+  );
   const resumedPreflight: PendingPreflight | null =
     openPreflight &&
     openPreflight._id !== ignoredPreflightSessionId &&
@@ -725,6 +729,10 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
             genre: run.genre,
             finalText: run.finalText,
           }}
+          demoMode={
+            run.executionMode === "demo" ||
+            (!run.executionMode && generationStatus?.mode === "demo")
+          }
           onStartOver={() => setRunId(null)}
         />
       );
@@ -742,24 +750,30 @@ export function WritingStudio({ clerkEnabled }: WritingStudioProps) {
               </CardTitle>
               <CardDescription>{run.error}</CardDescription>
             </CardHeader>
-            <CardContent className="flex gap-2">
-              <Button
-                onClick={() => {
-                  runPipeline({ runId }).catch((error: unknown) =>
-                    toast.error(
-                      error instanceof Error
-                        ? error.message
-                        : "Retry did not complete",
-                    ),
-                  );
-                }}
-              >
-                <RefreshCwIcon data-icon="inline-start" />
-                Retry
-              </Button>
-              <Button variant="outline" onClick={() => setRunId(null)}>
-                Return to draft
-              </Button>
+            <CardContent className="space-y-4">
+              <GenerationStatusBanner
+                enabled={workspaceReady}
+                failureCode={run.errorCode}
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    runPipeline({ runId }).catch((error: unknown) =>
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : "Retry did not complete",
+                      ),
+                    );
+                  }}
+                >
+                  <RefreshCwIcon data-icon="inline-start" />
+                  Retry
+                </Button>
+                <Button variant="outline" onClick={() => setRunId(null)}>
+                  Return to draft
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

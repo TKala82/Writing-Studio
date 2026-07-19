@@ -191,6 +191,18 @@ export const runStatusValidator = v.union(
   v.literal("error"),
 );
 
+export const pipelineErrorCodeValidator = v.union(
+  v.literal("provider-quota"),
+  v.literal("provider-auth"),
+  v.literal("provider-unavailable"),
+  v.literal("unknown"),
+);
+
+export const executionModeValidator = v.union(
+  v.literal("live"),
+  v.literal("demo"),
+);
+
 export const pipelineStageValidator = v.union(
   v.literal("queued"),
   v.literal("analyzing"),

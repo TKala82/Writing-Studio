@@ -19,6 +19,7 @@ import type * as ideationActions from "../ideationActions.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_demoPipeline from "../lib/demoPipeline.js";
 import type * as lib_models from "../lib/models.js";
+import type * as lib_pipelineErrors from "../lib/pipelineErrors.js";
 import type * as lib_pipelineSchemas from "../lib/pipelineSchemas.js";
 import type * as lib_playbookGuidance from "../lib/playbookGuidance.js";
 import type * as lib_prompts from "../lib/prompts.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/demoPipeline": typeof lib_demoPipeline;
   "lib/models": typeof lib_models;
+  "lib/pipelineErrors": typeof lib_pipelineErrors;
   "lib/pipelineSchemas": typeof lib_pipelineSchemas;
   "lib/playbookGuidance": typeof lib_playbookGuidance;
   "lib/prompts": typeof lib_prompts;

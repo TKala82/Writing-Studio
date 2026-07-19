@@ -128,6 +128,49 @@ git check-ignore -v scenarios-vault/behavior_scenarios.burned.example.md
 git check-ignore -v any/path/behavior_scenarios-live.md
 ```
 
+The executable harness accepts external JSON sets named `dev.scenarios.json`
+or `holdout.scenarios.json`, either at the vault root or under
+`writing-studio/`. Each file contains an array (or `{ "scenarios": [...] }`) of:
+
+```json
+{
+  "id": "external-id",
+  "title": "Scenario title",
+  "draft": "Exact writer draft",
+  "writerContext": "Optional interview answers and voice request",
+  "customPurpose": "Optional programme-specific purpose",
+  "constraints": ["Optional hard constraint"],
+  "subgroup": "Optional analysis group",
+  "burned": false
+}
+```
+
+The vault must also contain `PAIRWISE_JUDGE_PROMPT.md`. Keep the complete
+weighted rubric and blind-judge instructions there, outside the repository.
+The harness caps this prompt at 20,000 characters, hashes it into the frozen
+rubric identity, and includes it in the preflight token budget.
+
+Run a zero-cost orchestration rehearsal against the burned example:
+
+```bash
+npm run eval -- --set dev --mock
+```
+
+After provider credits are restored, freeze the brief and configuration, then
+run:
+
+```bash
+npm run eval:provider-smoke
+npm run eval -- --set holdout --prepare-brief --seed <pre-registered-seed>
+# Review holdout.brief.draft.json in the external vault, set status to
+# "frozen", and save it as holdout.brief.json.
+npm run eval -- --set holdout --seed <pre-registered-seed>
+```
+
+Set `EVAL_MAX_TOTAL_TOKENS` and `EVAL_MAX_USD` before a live run. The harness
+also accepts `EVAL_INPUT_USD_PER_MILLION` and
+`EVAL_OUTPUT_USD_PER_MILLION` for estimated cost reporting.
+
 Do not weaken isolation merely to make a cloud run convenient. Inject the vault
 through the external Builder or copy only the selected scenario into a
 short-lived generator workspace.
